@@ -1,0 +1,78 @@
+{
+  "success": true,
+  "message": "Successfully extracted 7 timesheet entries from 2 emails (date range: 2025-07-15 to 2025-07-16)",
+  "extracted_data": [
+    {
+      "date": "07/14/2025",
+      "day": "MON",
+      "hours": 4.0,
+      "client": "Paradigm Technology Consulting LLC",
+      "project": "Curaleaf",
+      "employee_name": "Rajkumar Jaganathan",
+      "employee_id": "DCI1013",
+      "sender_email": "rajkumar.dataclad@gmail.com"
+    },
+    {
+      "date": "07/15/2025",
+      "day": "TUE",
+      "hours": 4.0,
+      "client": "Paradigm Technology Consulting LLC",
+      "project": "Curaleaf",
+      "employee_name": "Rajkumar Jaganathan",
+      "employee_id": "DCI1013",
+      "sender_email": "rajkumar.dataclad@gmail.com"
+    },
+    {
+      "date": "06/23/2025",
+      "day": "MON",
+      "hours": 8.0,
+      "client": "Reflections",
+      "project": "Seymour Whyte Connect",
+      "employee_name": "Farah Nisar",
+      "employee_id": "DCI1012",
+      "sender_email": "farah.dataclad@gmail.com"
+    },
+    {
+      "date": "06/24/2025",
+      "day": "TUE",
+      "hours": 8.0,
+      "client": "Reflections",
+      "project": "Seymour Whyte Connect",
+      "employee_name": "Farah Nisar",
+      "employee_id": "DCI1012",
+      "sender_email": "farah.dataclad@gmail.com"
+    },
+    {
+      "date": "06/25/2025",
+      "day": "WED",
+      "hours": 8.0,
+      "client": "Reflections",
+      "project": "Seymour Whyte Connect",
+      "employee_name": "Farah Nisar",
+      "employee_id": "DCI1012",
+      "sender_email": "farah.dataclad@gmail.com"
+    },
+    {
+      "date": "06/26/2025",
+      "day": "THU",
+      "hours": 8.0,
+      "client": "Reflections",
+      "project": "Seymour Whyte Connect",
+      "employee_name": "Farah Nisar",
+      "employee_id": "DCI1012",
+      "sender_email": "farah.dataclad@gmail.com"
+    },
+    {
+      "date": "06/27/2025",
+      "day": "FRI",
+      "hours": 8.0,
+      "client": "Reflections",
+      "project": "Seymour Whyte Connect",
+      "employee_name": "Farah Nisar",
+      "employee_id": "DCI1012",
+      "sender_email": "farah.dataclad@gmail.com"
+    }
+  ],
+  "total_entries": 7,
+  "errors": []
+}

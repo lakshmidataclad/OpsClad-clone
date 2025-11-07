@@ -1,0 +1,33 @@
+# Core Python libraries
+numpy>=1.21.0
+pandas>=1.3.0
+
+# Image processing and OCR
+# Changed from contrib to regular headless version
+opencv-python-headless>=4.5.0
+pytesseract>=0.3.8
+Pillow>=8.3.0
+PyMuPDF>=1.26.3
+
+# Table extraction from images - updated to newer version
+img2table>=1.4.0
+
+# Additional dependencies for img2table
+lxml>=4.6.0
+openpyxl>=3.0.0
+
+# Database
+supabase>=2.0.0
+
+# Environment variables
+python-dotenv>=0.19.0
+
+# Date and time utilities (usually built-in, but sometimes needed)
+python-dateutil>=2.8.0
+
+# For rendering requirements on Render
+gunicorn>=20.1.0
+
+# Additional dependencies that might be needed
+requests>=2.25.0
+urllib3>=1.26.0

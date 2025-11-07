@@ -1,0 +1,1 @@
+{"success": false, "message": "Gmail email and password are required", "errors": ["Missing gmail_email or gmail_password in input"]}

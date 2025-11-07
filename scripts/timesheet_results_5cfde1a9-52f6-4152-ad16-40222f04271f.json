@@ -1,0 +1,58 @@
+{
+  "success": true,
+  "message": "Successfully extracted 5 timesheet entries from 1 emails (date range: 2025-07-28 to 2025-07-30)",
+  "extracted_data": [
+    {
+      "date": "07/14/2025",
+      "day": "MON",
+      "hours": 8.0,
+      "client": "Reflections",
+      "project": "Seymour Whyte Connect",
+      "employee_name": "Mohammed Shahid",
+      "employee_id": "DCI1014",
+      "sender_email": "shahid.dataclad@gmail.com"
+    },
+    {
+      "date": "07/15/2025",
+      "day": "TUE",
+      "hours": 8.0,
+      "client": "Reflections",
+      "project": "Seymour Whyte Connect",
+      "employee_name": "Mohammed Shahid",
+      "employee_id": "DCI1014",
+      "sender_email": "shahid.dataclad@gmail.com"
+    },
+    {
+      "date": "07/16/2025",
+      "day": "WED",
+      "hours": 8.0,
+      "client": "Reflections",
+      "project": "Seymour Whyte Connect",
+      "employee_name": "Mohammed Shahid",
+      "employee_id": "DCI1014",
+      "sender_email": "shahid.dataclad@gmail.com"
+    },
+    {
+      "date": "07/17/2025",
+      "day": "THU",
+      "hours": 8.0,
+      "client": "Reflections",
+      "project": "Seymour Whyte Connect",
+      "employee_name": "Mohammed Shahid",
+      "employee_id": "DCI1014",
+      "sender_email": "shahid.dataclad@gmail.com"
+    },
+    {
+      "date": "07/18/2025",
+      "day": "FRI",
+      "hours": 8.0,
+      "client": "Reflections",
+      "project": "Seymour Whyte Connect",
+      "employee_name": "Mohammed Shahid",
+      "employee_id": "DCI1014",
+      "sender_email": "shahid.dataclad@gmail.com"
+    }
+  ],
+  "total_entries": 5,
+  "errors": []
+}
