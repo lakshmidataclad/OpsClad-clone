@@ -2,8 +2,37 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
+const TEST_MODE = true
+
+
 export async function POST(request: Request) {
   try {
+
+       // ---------- TEST MODE ----------
+    if (TEST_MODE) {
+      const adminUser = {
+        id: "admin-12345",
+        email: "admin@example.com",
+        username: "Admin",
+      }
+
+      const fakeSession = {
+        access_token: "fake-access-token",
+        refresh_token: "fake-refresh-token",
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        expires_in: 3600,
+      }
+
+      return NextResponse.json({
+        message: "Admin login successful (TEST MODE)",
+        user: adminUser,
+        session: fakeSession,
+      })
+    }
+
+
+
+
     const { email, password } = await request.json()
 
     if (!email || !password) {
