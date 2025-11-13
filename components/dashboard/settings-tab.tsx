@@ -626,6 +626,100 @@ export default function SettingsTab() {
           )}
         </CardContent>
       </Card>
+
+
+
+          
+      {/* Holiday Upload Section */}
+      <Card className="bg-white text-gray-800">
+        <CardHeader>
+          <CardTitle>Holiday Data Upload</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${holidayCsvUploaded ? "bg-green-500" : "bg-red-500"}`}></div>
+              <span>
+                {holidayCsvUploaded ? (
+                  <span className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Holiday CSV uploaded
+                  </span>
+                ) : (
+                  "No Holiday CSV uploaded"
+                )}
+              </span>
+            </div>
+
+            {holidayCsvUploaded && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1 border-gray-300 text-gray-800 bg-white"
+                  onClick={handleDownloadHolidayCsv}>
+                  <DownloadIcon className="w-4 h-4" /> Download CSV
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {holidayCsvUploaded && (
+            <Alert className="bg-green-50 border-green-200">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <AlertTitle className="text-green-700">Holiday Data Saved</AlertTitle>
+              <AlertDescription className="text-green-600">
+                Your holiday data is saved and will appear on the calendar.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <Alert className="bg-blue-50 border-blue-200">
+            <InfoIcon className="h-4 w-4 text-blue-500" />
+            <AlertTitle className="text-blue-500">CSV Requirements:</AlertTitle>
+            <AlertDescription className="text-gray-700">
+              <ul className="list-disc ml-5 space-y-1">
+                <li>
+                  Required columns: <strong>holiday_name</strong>, <strong>start_date</strong>, <strong>end_date</strong>
+                </li>
+                <li>Dates must be in YYYY-MM-DD format</li>
+                <li>File must be in CSV format</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
+
+          <div
+            className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-all ${
+              isDragging ? "border-red-500 bg-gray-100" : "border-gray-300"
+            } ${isUploading ? "opacity-50 pointer-events-none" : ""}`}
+            onClick={() => document.getElementById("holiday-csv-input")?.click()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <div className="flex flex-col items-center">
+              <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-white mb-4">
+                <UploadIcon className="h-6 w-6" />
+              </div>
+              <p className="text-lg font-medium mb-2">Drag and drop your Holiday CSV file here</p>
+              <p className="text-sm text-gray-500">or click to browse files</p>
+            </div>
+          </div>
+
+          <input
+            type="file"
+            id="holiday-csv-input"
+            accept=".csv"
+            className="hidden"
+            onChange={(e) => handleHolidayCsvUpload(e.target.files?.[0] || null)}
+            disabled={isUploading}
+          />
+        </CardContent>
+      </Card>
+
+
+
+
     </div>
   )
 }
