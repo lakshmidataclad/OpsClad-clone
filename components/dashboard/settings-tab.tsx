@@ -374,6 +374,114 @@ export default function SettingsTab() {
     )
   }
 
+
+  
+ const handleHolidayCsvUpload = async (file: File | null) => {
+  if (!file) return
+
+  if (!file.name.toLowerCase().endsWith(".csv")) {
+    toast({
+      title: "Invalid file",
+      description: "Please upload a CSV file.",
+      variant: "destructive",
+    })
+    return
+  }
+
+  setIsUploading(true)
+  setHolidayCsvFile(file)
+
+  try {
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("userId", currentUser?.user_id || "")
+
+    const response = await fetch("/api/upload-holidays-csv", {
+      method: "POST",
+      body: formData,
+    })
+
+    const data = await response.json()
+
+    if (data.success) {
+      setHolidayCsvUploaded(true)
+      toast({
+        title: "Holiday CSV uploaded",
+        description: data.message || "Holidays successfully added.",
+      })
+    } else {
+      toast({
+        title: "Upload failed",
+        description: data.message || "Failed to upload holiday CSV.",
+        variant: "destructive",
+      })
+    }
+  } catch (error) {
+    console.error("Upload error:", error)
+    toast({
+      title: "Upload error",
+      description: "An error occurred while uploading the file.",
+      variant: "destructive",
+    })
+  } finally {
+    setIsUploading(false)
+  }
+}
+
+
+
+
+const handleDownloadHolidayCsv = async () => {
+  try {
+    const response = await fetch(`/api/get-holidays-csv`)
+    const data = await response.json()
+
+    if (response.ok && data.success && data.data) {
+      const csvRows: string[] = []
+      csvRows.push("Holiday Name,Start Date,End Date,Description")
+
+      data.data.forEach((holiday: any) => {
+        csvRows.push(
+          `${holiday.holiday_name},${holiday.start_date},${holiday.end_date},${holiday.description || ""}`
+        )
+      })
+
+      const csvContent = csvRows.join("\n")
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+      const link = document.createElement("a")
+      const url = URL.createObjectURL(blob)
+
+      link.setAttribute("href", url)
+      link.setAttribute("download", `holidays_${new Date().toISOString().split("T")[0]}.csv`)
+      link.style.visibility = "hidden"
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      toast({
+        title: "Download started",
+        description: "Your holiday CSV is being downloaded.",
+      })
+    } else {
+      toast({
+        title: "Download failed",
+        description: data.message || "Failed to download holiday CSV.",
+        variant: "destructive",
+      })
+    }
+  } catch (error) {
+    console.error("Download error:", error)
+    toast({
+      title: "Download error",
+      description: "An error occurred while downloading the file.",
+      variant: "destructive",
+    })
+  }
+}
+
+
+
+
   return (
     <div className="p-6 space-y-6">
       <Card className="bg-white text-gray-800">
