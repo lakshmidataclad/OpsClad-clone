@@ -366,90 +366,6 @@ export default function SettingsTab() {
     }
   }
 
-
-
-  const handleDownloadHolidaysCsv = async () => {
-    if (!currentUser) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to download the file.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    try {
-      const response = await fetch(`/api/get-csv-content`)
-      const data = await response.json()
-
-      if (response.ok && data.success && data.data) {
-        // Convert the data back to CSV format
-        const csvRows = []
-        
-        // Add header
-        csvRows.push("Holiday_Name,Holiday_Date,Hoilday_Description")
-        
-        // Helper function to escape CSV fields
-        const escapeCSV = (field: string) => {
-          if (field.includes(',') || field.includes('"') || field.includes('\n')) {
-            return `"${field.replace(/"/g, '""')}"`
-          }
-          return field
-        }
-        
-        // Add data rows
-        data.data.forEach((holiday: any) => {
-          holiday.holidays.forEach((holiday: any) => {
-            const birthday = holiday.holiday_date || ""
-            
-            // Escape fields that contain commas
-            const holiday_name = escapeCSV(holiday.Holiday_Name)
-            const holiday_date = escapeCSV(holiday.Holiday_Date)
-            const holiday_description = escapeCSV(holiday.Holiday_Description)
-            
-            csvRows.push(
-              `${holiday_name},${holiday_date},${holiday_description}`
-            )
-          })
-        })
-        
-        // Create blob and download
-        const csvContent = csvRows.join("\n")
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-        const link = document.createElement("a")
-        const url = URL.createObjectURL(blob)
-        
-        link.setAttribute("href", url)
-        link.setAttribute("download", `holiday_data_${new Date().toISOString().split('T')[0]}.csv`)
-        link.style.visibility = "hidden"
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        
-        toast({
-          title: "Download started",
-          description: "Your CSV file is being downloaded.",
-        })
-      } else {
-        toast({
-          title: "Download failed",
-          description: data.message || "Failed to download CSV file.",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("Download error:", error)
-      toast({
-        title: "Download error",
-        description: "An error occurred while downloading the file.",
-        variant: "destructive",
-      })
-    }
-  }
-
-
-
-
   if (isLoading) {
     return (
       <div className="p-6 space-y-6 flex flex-col items-center justify-center h-full">
@@ -721,7 +637,7 @@ export default function SettingsTab() {
       
       <Card className="bg-white text-gray-800">
         <CardHeader>
-          <CardTitle>Holiday Data Upload</CardTitle>
+          <CardTitle>Employee Data Upload</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between gap-2">
@@ -748,7 +664,7 @@ export default function SettingsTab() {
                   </DialogTrigger>
                   <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-white text-gray-800">
                     <DialogHeader>
-                      <DialogTitle>Current Holiday Data</DialogTitle>
+                      <DialogTitle>Current Employee Data</DialogTitle>
                       <DialogDescription>
                         Displaying the first 50 rows of the currently stored CSV file.
                       </DialogDescription>
@@ -762,24 +678,30 @@ export default function SettingsTab() {
                         <Table>
                           <TableHeader className="sticky top-0 bg-white">
                             <TableRow>
-                              <TableHead>Holiday</TableHead>
-                              <TableHead>Holiday_Date</TableHead>
-                              <TableHead>Holiday_Description</TableHead>
+                              <TableHead>Employee ID</TableHead>
+                              <TableHead>Name</TableHead>
+                              <TableHead>Email</TableHead>
+                              <TableHead>Project</TableHead>
+                              <TableHead>Client</TableHead>
+                              <TableHead>Hours</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {csvData.map((holiday, holidayIndex) =>
-                              holiday.holidays.map((project: any, projectIndex: number) => (
-                                <TableRow key={`${holiday.holiday_name}`}>
+                            {csvData.map((employee, employeeIndex) =>
+                              employee.projects.map((project: any, projectIndex: number) => (
+                                <TableRow key={`${employee.employee_id}-${projectIndex}`}>
                                   <TableCell className="text-gray-600">
-                                    {projectIndex === 0 ? holiday.holiday_name : ""}
+                                    {projectIndex === 0 ? employee.employee_id : ""}
                                   </TableCell>
                                   <TableCell className="text-gray-600">
-                                    {projectIndex === 0 ? holiday.holiday_date : ""}
+                                    {projectIndex === 0 ? employee.name : ""}
                                   </TableCell>
                                   <TableCell className="text-gray-600">
-                                    {projectIndex === 0 ? holiday.holiday_description : ""}
+                                    {projectIndex === 0 ? employee.email_id : ""}
                                   </TableCell>
+                                  <TableCell className="text-gray-600">{project.project}</TableCell>
+                                  <TableCell className="text-gray-600">{project.client}</TableCell>
+                                  <TableCell className="text-gray-600">{project.hours}</TableCell>
                                 </TableRow>
                               ))
                             )}
@@ -797,7 +719,7 @@ export default function SettingsTab() {
                   variant="outline" 
                   size="sm" 
                   className="flex items-center gap-1 border-gray-300 text-gray-800 bg-white"
-                  onClick={handleDownloadHolidaysCsv}
+                  onClick={handleDownloadCsv}
                 >
                   <DownloadIcon className="w-4 h-4" /> Download CSV
                 </Button>
@@ -808,9 +730,9 @@ export default function SettingsTab() {
           {csvUploaded && (
             <Alert className="bg-green-50 border-green-200">
               <CheckCircle className="h-4 w-4 text-green-500" />
-              <AlertTitle className="text-green-700">Holiday Data Saved</AlertTitle>
+              <AlertTitle className="text-green-700">Employee Data Saved</AlertTitle>
               <AlertDescription className="text-green-600">
-                Your Holidays data is saved and will be fetched automatically.
+                Your employee data is saved and will be fetched automatically.
               </AlertDescription>
             </Alert>
           )}
@@ -821,11 +743,12 @@ export default function SettingsTab() {
             <AlertDescription className="text-gray-700">
               <ul className="list-disc ml-5 space-y-1">
                 <li>
-                  Required columns: <strong>holiday_name</strong>, <strong>holiday_date</strong>, <strong>holiday_description</strong>,{" "}
+                  Required columns: <strong>name</strong>, <strong>emp id</strong>, <strong>email id</strong>, <strong>birthday</strong>, <strong>project</strong>, <strong>client</strong>,{" "}
+                  <strong>hours</strong>
                 </li>
                 <li>Column names are case-insensitive</li>
                 <li>File must be in CSV format</li>
-                <li>Each row should have 1 holiday event per date, per row. If have 1 holiday event with multiple dates, create as many rows needed for each date</li>
+                <li>Each row should contain one employee's project assignment. If there are multiple projects for the same client, list both projects in the same row as Project1,Project2</li>
               </ul>
             </AlertDescription>
           </Alert>
