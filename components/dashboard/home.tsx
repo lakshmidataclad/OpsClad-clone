@@ -233,17 +233,17 @@ const DateDetailsModal = ({ selectedDate, onClose }: { selectedDate: SelectedDat
           {selectedDate.holidays.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                <Users className="w-5 h-5 text-green-400" />
+                <Users className="w-5 h-5 text-red-400" />
                 Public Holidays ({selectedDate.holidays.length})
               </h3>
               <div className="space-y-2">
                 {selectedDate.holidays.map((holiday) => (
-                  <div key={holiday.id} className="flex items-center justify-between p-3 bg-green-900/20 border border-green-700 rounded-lg">
+                  <div key={holiday.id} className="flex items-center justify-between p-3 bg-red-900/20 border border-red-700 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <User className="w-4 h-4 text-green-400" />
+                      <User className="w-4 h-4 text-red-400" />
                       <div>
                         <p className="text-white font-medium">{holiday.holiday_name}</p>
-                        <p className="text-yellow-300 text-sm">Happy Holiday! 🎉</p>
+                        <p className="text-red-300 text-sm">Public Holiday! 🎉</p>
                       </div>
                     </div>
                   </div>
@@ -504,7 +504,7 @@ export default function HomePage() {
                   const hasLeave = calendarDay.ptoRecords.length > 0
                   const hasBirthdays = calendarDay.birthdays.length > 0
                   const hasHolidays = calendarDay.holidays.length > 0
-                  const hasActivity = hasLeave || hasBirthdays
+                  const hasActivity = hasLeave || hasBirthdays || hasHolidays
                   const isCurrentDay = isToday(calendarDay.date)
                   
                   return (
@@ -534,7 +534,7 @@ export default function HomePage() {
                               variant="outline" 
                               className="text-xs border-yellow-500 text-yellow-600 bg-yellow-100 px-1 py-0"
                             >
-                              {calendarDay.birthdays.length} birthday
+                              {calendarDay.birthdays.length} Birthday
                             </Badge>
                           </div>
                         )}
