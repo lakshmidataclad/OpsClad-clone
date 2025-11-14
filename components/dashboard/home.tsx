@@ -26,28 +26,17 @@ interface Employee {
   birthday: string
 }
 
-interface HolidayRecords{
-  id: string
-  holiday_name: string
-  holiday_startdate: string
-  holiday_enddate: string
-  holiday_description: string
-}
-
 interface CalendarDay {
   date: Date
   isCurrentMonth: boolean
   ptoRecords: PTORecord[]
   birthdays: Employee[]
-  holidays: HolidayRecords[]
 }
 
 interface SelectedDateInfo {
   date: Date
   ptoRecords: PTORecord[]
   birthdays: Employee[]
-  holidays: HolidayRecords[]
-
 }
 
 
@@ -186,7 +175,6 @@ const DateDetailsModal = ({ selectedDate, onClose }: { selectedDate: SelectedDat
           </Button>
         </CardHeader>
         <CardContent className="space-y-6">
-
           {/* Birthdays Section */}
           {selectedDate.birthdays.length > 0 && (
             <div>
@@ -230,31 +218,8 @@ const DateDetailsModal = ({ selectedDate, onClose }: { selectedDate: SelectedDat
             </div>
           )}
 
-          {/* Holidays Section */}
-          {selectedDate.holidays.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                <Users className="w-5 h-5 text-green-400" />
-                Public Holidays ({selectedDate.holidays.length})
-              </h3>
-              <div className="space-y-2">
-                {selectedDate.holidays.map((holiday) => (
-                  <div key={holiday.id} className="flex items-center justify-between p-3 bg-green-900/20 border border-green-700 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <User className="w-4 h-4 text-green-400" />
-                      <div>
-                        <p className="text-white font-medium">{holiday.holiday_name}</p>
-                        <p className="text-yellow-300 text-sm">Happy Holiday! 🎉</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* No Activity */}
-          {selectedDate.ptoRecords.length === 0 && selectedDate.birthdays.length === 0 && selectedDate.holidays.length === 0 && (
+          {selectedDate.ptoRecords.length === 0 && selectedDate.birthdays.length === 0 && (
             <div className="text-center py-8">
               <Calendar className="w-12 h-12 text-gray-500 mx-auto mb-3" />
               <p className="text-gray-400">No activity scheduled for this date</p>
@@ -345,8 +310,7 @@ export default function HomePage() {
     setSelectedDate({
       date: calendarDay.date,
       ptoRecords: calendarDay.ptoRecords,
-      birthdays: calendarDay.birthdays,
-      holidays: calendarDay.holidays
+      birthdays: calendarDay.birthdays
     })
   }
 
