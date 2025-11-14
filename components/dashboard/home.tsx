@@ -26,17 +26,27 @@ interface Employee {
   birthday: string
 }
 
+interface HolidayRecord{
+  id: string
+  holiday_name: string
+  holiday_date: string
+  holiday_description: string
+}
+
 interface CalendarDay {
   date: Date
   isCurrentMonth: boolean
   ptoRecords: PTORecord[]
   birthdays: Employee[]
+  holidays: HolidayRecord[]
 }
 
 interface SelectedDateInfo {
   date: Date
   ptoRecords: PTORecord[]
   birthdays: Employee[]
+  holidays: HolidayRecord[]
+
 }
 
 
@@ -175,6 +185,7 @@ const DateDetailsModal = ({ selectedDate, onClose }: { selectedDate: SelectedDat
           </Button>
         </CardHeader>
         <CardContent className="space-y-6">
+
           {/* Birthdays Section */}
           {selectedDate.birthdays.length > 0 && (
             <div>
@@ -218,8 +229,31 @@ const DateDetailsModal = ({ selectedDate, onClose }: { selectedDate: SelectedDat
             </div>
           )}
 
+          {/* Holidays Section */}
+          {selectedDate.holidays.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                <Users className="w-5 h-5 text-green-400" />
+                Public Holidays ({selectedDate.holidays.length})
+              </h3>
+              <div className="space-y-2">
+                {selectedDate.holidays.map((holiday) => (
+                  <div key={holiday.id} className="flex items-center justify-between p-3 bg-green-900/20 border border-green-700 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <User className="w-4 h-4 text-green-400" />
+                      <div>
+                        <p className="text-white font-medium">{holiday.holiday_name}</p>
+                        <p className="text-yellow-300 text-sm">Happy Holiday! 🎉</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* No Activity */}
-          {selectedDate.ptoRecords.length === 0 && selectedDate.birthdays.length === 0 && (
+          {selectedDate.ptoRecords.length === 0 && selectedDate.birthdays.length === 0 && selectedDate.holidays.length === 0 && (
             <div className="text-center py-8">
               <Calendar className="w-12 h-12 text-gray-500 mx-auto mb-3" />
               <p className="text-gray-400">No activity scheduled for this date</p>
@@ -234,6 +268,7 @@ const DateDetailsModal = ({ selectedDate, onClose }: { selectedDate: SelectedDat
 export default function HomePage() {
   const [ptoRecords, setPtoRecords] = useState<PTORecord[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [holidays, setHolidays] = useState<HolidayRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showWelcome, setShowWelcome] = useState(true)
@@ -276,6 +311,18 @@ export default function HomePage() {
         setEmployees(employeeData || [])
       }
 
+      // Load Holidays
+      const { data: holidays, error: holidayError } = await supabase
+        .from('holidays')
+        .select('id, holiday_name, holiday_date, holiday_description')
+        .not('holiday_date', 'is', null)
+
+      if (holidayError) {
+        console.error('Error loading holidays:', holidayError)
+      } else {
+        setHolidays(holidays || [])
+      }
+
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -306,11 +353,21 @@ export default function HomePage() {
     })
   }
 
+    const getHolidaysForDate = (holiday_date: Date): HolidayRecord[] => {
+    return holidays.filter(holiday => {
+      if (!holiday.holiday_date) return false
+      const fn_holiday_date = parseISODate(holiday.holiday_date)
+      return isSameDayMonth(fn_holiday_date, holiday_date)
+    })
+  }
+
+
   const handleDateClick = (calendarDay: CalendarDay) => {
     setSelectedDate({
       date: calendarDay.date,
       ptoRecords: calendarDay.ptoRecords,
-      birthdays: calendarDay.birthdays
+      birthdays: calendarDay.birthdays,
+      holidays: calendarDay.holidays
     })
   }
 
@@ -338,7 +395,8 @@ export default function HomePage() {
       date: day,
       isCurrentMonth: day.getMonth() === currentDate.getMonth(),
       ptoRecords: ptoRecords.filter(record => isSameDay(parseISODate(record.date), day)),
-      birthdays: getBirthdaysForDate(day)
+      birthdays: getBirthdaysForDate(day),
+      holidays: getHolidaysForDate(day)
     }))
   }
 
@@ -351,6 +409,8 @@ export default function HomePage() {
 
   const todayEvents = ptoRecords.filter(record => isToday(parseISODate(record.date)))
   const todayBirthdays = getBirthdaysForDate(new Date())
+  const todayHolidays = getHolidaysForDate(new Date())
+
 
   const calendarDays = generateCalendarDays()
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -443,6 +503,7 @@ export default function HomePage() {
                   const totalEmployees = getTotalEmployeesOnLeave(calendarDay.date)
                   const hasLeave = calendarDay.ptoRecords.length > 0
                   const hasBirthdays = calendarDay.birthdays.length > 0
+                  const hasHolidays = calendarDay.holidays.length > 0
                   const hasActivity = hasLeave || hasBirthdays
                   const isCurrentDay = isToday(calendarDay.date)
                   
@@ -456,6 +517,7 @@ export default function HomePage() {
                         ${isCurrentDay ? 'ring-2 ring-blue-500 bg-blue-50' : ''}
                         ${hasLeave ? 'bg-green-50 border-green-200' : ''}
                         ${hasBirthdays ? 'bg-yellow-50 border-yellow-200' : ''}
+                        ${hasHolidays ? 'bg-red-50 border-red-200' : ''}
                         ${hasActivity ? 'cursor-pointer hover:shadow-md hover:scale-105' : ''}
                       `}
                     >
@@ -473,6 +535,18 @@ export default function HomePage() {
                               className="text-xs border-yellow-500 text-yellow-600 bg-yellow-100 px-1 py-0"
                             >
                               {calendarDay.birthdays.length} birthday
+                            </Badge>
+                          </div>
+                        )}
+
+                        {hasHolidays && (
+                          <div className="flex items-center gap-1">
+                            <PartyPopper className="w-3 h-3 text-red-600" />
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs border-red-500 text-red-600 bg-red-100 px-1 py-0"
+                            >
+                              {calendarDay.holidays.length} Holiday
                             </Badge>
                           </div>
                         )}
