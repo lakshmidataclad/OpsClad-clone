@@ -710,7 +710,7 @@ export default function SettingsTab() {
               <div className="flex gap-2">
                 <Dialog onOpenChange={(open) => open && fetchHolidayData()}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" className="flex items-center gap-1 border-gray-300 text-gray-800 bg-white">
                       <FileTextIcon className="w-4 h-4" /> View File
                     </Button>
                   </DialogTrigger>
@@ -746,10 +746,16 @@ export default function SettingsTab() {
                     )}
                   </DialogContent>
                 </Dialog>
-
-                <Button variant="outline" size="sm" onClick={handleDownloadHolidays}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex items-center gap-1 border-gray-300 text-gray-800 bg-white"
+                  onClick={handleDownloadHolidays}
+                >
                   <DownloadIcon className="w-4 h-4" /> Download CSV
                 </Button>
+
+
               </div>
             )}
           </div>
