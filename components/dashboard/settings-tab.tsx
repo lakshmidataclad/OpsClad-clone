@@ -699,6 +699,19 @@ export default function SettingsTab() {
         </CardHeader>
 
         <CardContent className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${holidaysUploaded ? "bg-green-500" : "bg-red-500"}`}></div>
+              <span>
+                {csvUploaded ? (
+                  <span className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    CSV uploaded
+                  </span>
+                ) : (
+                  "No CSV uploaded"
+                )}
+              </span>
+            </div>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
