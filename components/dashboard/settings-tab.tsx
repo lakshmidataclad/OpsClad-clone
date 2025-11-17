@@ -942,7 +942,7 @@ export default function SettingsTab() {
             <AlertDescription className="text-gray-700">
               <ul className="list-disc ml-5 space-y-1">
                 <li>
-                  Required columns: <strong>name</strong>, <strong>emp id</strong>, <strong>email id</strong>, <strong>birthday</strong>, <strong>project</strong>, <strong>client</strong>,{" "}
+                  Required columns: <strong>Holiday</strong>, <strong>Holiday Date</strong>, <strong>Holiday Description</strong>,{" "}
                   <strong>hours</strong>
                 </li>
                 <li>Column names are case-insensitive</li>
