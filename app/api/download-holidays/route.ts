@@ -15,5 +15,21 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, data });
+  const csvRows = [];
+  csvRows.push("holiday,holiday_date,holiday_description");
+
+  data.forEach((h) => {
+    csvRows.push(
+      `${h.holiday},${h.holiday_date},${h.holiday_description || ""}`
+    );
+  });
+
+  const csv = csvRows.join("\n");
+
+  return new NextResponse(csv, {
+    headers: {
+      "Content-Type": "text/csv",
+      "Content-Disposition": `attachment; filename=holidays.csv`,
+    },
+  });
 }

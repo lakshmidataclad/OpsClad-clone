@@ -41,6 +41,12 @@ export default function SettingsTab() {
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
+  const [holidaysUploaded, setHolidaysUploaded] = useState(false);
+  const [holidayFile, setHolidayFile] = useState<File | null>(null);
+  const [holidayData, setHolidayData] = useState<any[] | null>(null);
+  const [isLoadingHolidayData, setIsLoadingHolidayData] = useState(false);
+
+
   // Load data on component mount - same as ReminderEmailTab
   useEffect(() => {
     const userStr = sessionStorage.getItem("currentUser") 
@@ -49,6 +55,8 @@ export default function SettingsTab() {
       setCurrentUser(user)
       checkGmailStatus(user.user_id)
       checkCsvStatus(user.user_id)
+      checkHolidayStatus(user.user_id)
+
     }
     setIsLoading(false)
   }, [])
@@ -76,6 +84,12 @@ export default function SettingsTab() {
       console.error("Error checking CSV status:", error)
     }
   }
+
+  const checkHolidayStatus = async (userId: string) => {
+    const res = await fetch(`/api/holiday-status?userId=${userId}`);
+    const data = await res.json();
+    setHolidaysUploaded(data.uploaded);
+  };
 
   const fetchCsvData = async () => {
     if (!currentUser) {
@@ -114,6 +128,20 @@ export default function SettingsTab() {
       setIsLoadingCsvData(false)
     }
   }
+
+  const fetchHolidayData = async () => {
+    if (!currentUser) return;
+
+    setIsLoadingHolidayData(true);
+
+    const res = await fetch(`/api/get-holidays?userId=${currentUser.user_id}`);
+    const data = await res.json();
+
+    if (data.success) setHolidayData(data.data);
+    else setHolidayData(null);
+
+    setIsLoadingHolidayData(false);
+  };
 
   const handleGmailConnection = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -241,6 +269,31 @@ export default function SettingsTab() {
       return
     }
 
+    const handleHolidayUpload = async (file: File) => {
+    if (!currentUser) {
+      toast({ title: "Authentication required", variant: "destructive" });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("userId", currentUser.user_id);
+
+    const res = await fetch("/api/upload-holidays", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      setHolidaysUploaded(true);
+      toast({ title: "Holiday CSV uploaded", description: data.message });
+    } else {
+      toast({ title: "Upload failed", description: data.message, variant: "destructive" });
+    }
+  };
+
+
     setIsUploading(true)
     setCsvFile(file)
 
@@ -365,6 +418,19 @@ export default function SettingsTab() {
       })
     }
   }
+
+  const handleDownloadHolidays = async () => {
+    const res = await fetch(`/api/download-holidays?userId=${currentUser.user_id}`);
+    const text = await res.text();
+
+    const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "holidays.csv";
+    a.click();
+  };
+
 
   if (isLoading) {
     return (
@@ -626,6 +692,100 @@ export default function SettingsTab() {
           )}
         </CardContent>
       </Card>
+
+      <Card className="bg-white text-gray-800 mt-8">
+        <CardHeader>
+          <CardTitle>Holiday Data Upload</CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${holidaysUploaded ? "bg-green-500" : "bg-red-500"}`}></div>
+              <span>{holidaysUploaded ? "Holidays CSV Uploaded" : "No Holidays CSV uploaded"}</span>
+            </div>
+
+            {holidaysUploaded && (
+              <div className="flex gap-2">
+                <Dialog onOpenChange={(open) => open && fetchHolidayData()}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <FileTextIcon className="w-4 h-4" /> View File
+                    </Button>
+                  </DialogTrigger>
+
+                  <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Holiday Data</DialogTitle>
+                    </DialogHeader>
+
+                    {isLoadingHolidayData ? (
+                      <p>Loading…</p>
+                    ) : holidayData?.length ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Description</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {holidayData.map((h, i) => (
+                            <TableRow key={i}>
+                              <TableCell>{h.holiday_name}</TableCell>
+                              <TableCell>{h.holiday_date}</TableCell>
+                              <TableCell>{h.holiday_description}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <p>No holidays found.</p>
+                    )}
+                  </DialogContent>
+                </Dialog>
+
+                <Button variant="outline" size="sm" onClick={handleDownloadHolidays}>
+                  <DownloadIcon className="w-4 h-4" /> Download CSV
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <Alert>
+            <AlertTitle>Holiday CSV Requirements</AlertTitle>
+            <AlertDescription>
+              Required columns:
+              <ul>
+                <li>holiday_name</li>
+                <li>holiday_date (YYYY-MM-DD)</li>
+                <li>holiday_description</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
+
+          <div
+            className="border-2 border-dashed rounded-lg p-10 text-center cursor-pointer"
+            onClick={() => document.getElementById("holiday-file").click()}
+          >
+            <UploadIcon className="w-6 h-6 mx-auto mb-3" />
+            <p>Upload Holidays CSV</p>
+          </div>
+
+          <input
+            id="holiday-file"
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={(e) => handleHolidayUpload(e.target.files[0])}
+          />
+        
+          
+        </CardContent>
+      </Card>
+
     </div>
   )
 }

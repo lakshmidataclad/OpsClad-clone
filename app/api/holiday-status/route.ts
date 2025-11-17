@@ -1,51 +1,24 @@
-//import nextresponse and supabase client
-import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
 
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get("userId");
 
-//start a get handler
-export async function GET() {
-  try {
-
-    // Check if employee data exists in Supabase
-    const { data, error, count } = await supabase
-    // fetch 1 row of data from the employee table
-      .from("holidays")
-      .select("*", { count: "exact" })
-      // limit to 1 row to know if data exist
-      .limit(1)
-
-
-    //handle any supabase error
-    if (error) {
-      return NextResponse.json({ uploaded: false, message: error.message }, { status: 500 })
-    }
-
-    // if table is empty no upload of CSV
-    if (!data || data.length === 0) {
-      return NextResponse.json({ uploaded: false })
-    }
-
-
-    // to know what columns exist
-    const { data: columnData } = await supabase
-      .from("holidays")
-      .select("*")
-      .limit(1)
-
-    
-    const columns =
-      columnData && columnData.length > 0
-        ? Object.keys(columnData[0]).filter((col) => !["id", "created_at"].includes(col))
-        : []
-
-    return NextResponse.json({
-      uploaded: true,
-      holiday_record_count: count || 0,
-      columns: columns,
-    })
-  } catch (error) {
-    console.error("CSV status error:", error)
-    return NextResponse.json({ uploaded: false })
+  if (!userId) {
+    return NextResponse.json(
+      { success: false, message: "Unauthorized" },
+      { status: 401 }
+    );
   }
+
+  const { data, error, count } = await supabase
+    .from("holidays")
+    .select("*", { count: "exact" })
+    .limit(1);
+
+  return NextResponse.json({
+    uploaded: !!data?.length,
+    record_count: count || 0,
+  });
 }
