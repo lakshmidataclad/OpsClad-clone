@@ -233,17 +233,17 @@ const DateDetailsModal = ({ selectedDate, onClose }: { selectedDate: SelectedDat
           {selectedDate.holidays.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                <Users className="w-5 h-5 text-red-400" />
+                <Users className="w-5 h-5 text-orange-400" />
                 Public Holidays ({selectedDate.holidays.length})
               </h3>
               <div className="space-y-2">
                 {selectedDate.holidays.map((holiday) => (
-                  <div key={holiday.id} className="flex items-center justify-between p-3 bg-red-900/20 border border-red-700 rounded-lg">
+                  <div key={holiday.id} className="flex items-center justify-between p-3 bg-orange-900/20 border border-orange-700 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <User className="w-4 h-4 text-red-400" />
+                      <User className="w-4 h-4 text-orange-400" />
                       <div>
                         <p className="text-white font-medium">{holiday.holiday_name}</p>
-                        <p className="text-red-300 text-sm">Public Holiday! 🎉</p>
+                        <p className="text-orange-300 text-sm">Public Holiday! 🎉</p>
                       </div>
                     </div>
                   </div>
@@ -517,7 +517,7 @@ export default function HomePage() {
                         ${isCurrentDay ? 'ring-2 ring-blue-500 bg-blue-50' : ''}
                         ${hasLeave ? 'bg-green-50 border-green-200' : ''}
                         ${hasBirthdays ? 'bg-yellow-50 border-yellow-200' : ''}
-                        ${hasHolidays ? 'bg-red-50 border-red-200' : ''}
+                        ${hasHolidays ? 'bg-orange-50 border-orange-200' : ''}
                         ${hasActivity ? 'cursor-pointer hover:shadow-md hover:scale-105' : ''}
                       `}
                     >
@@ -541,10 +541,10 @@ export default function HomePage() {
 
                         {hasHolidays && (
                           <div className="flex items-center gap-1">
-                            <PartyPopper className="w-3 h-3 text-red-600" />
+                            <PartyPopper className="w-3 h-3 text-orange-600" />
                             <Badge 
                               variant="outline" 
-                              className="text-xs border-red-500 text-red-600 bg-red-100 px-1 py-0"
+                              className="text-xs border-orange-500 text-orange-600 bg-orange-100 px-1 py-0"
                             >
                               {calendarDay.holidays.length} Holiday
                             </Badge>
