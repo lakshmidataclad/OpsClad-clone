@@ -850,14 +850,14 @@ export default function SettingsTab() {
 
       <Card className="bg-white text-gray-800">
         <CardHeader>
-          <CardTitle>Employee Data Upload</CardTitle>
+          <CardTitle>Holiday Data Upload</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${csvUploaded ? "bg-green-500" : "bg-red-500"}`}></div>
+              <div className={`w-3 h-3 rounded-full ${csvHolidayUploaded ? "bg-green-500" : "bg-red-500"}`}></div>
               <span>
-                {csvUploaded ? (
+                {csvHolidayUploaded ? (
                   <span className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
                     CSV uploaded
@@ -867,7 +867,7 @@ export default function SettingsTab() {
                 )}
               </span>
             </div>
-            {csvUploaded && (
+            {csvHolidayUploaded && (
               <div className="flex gap-2">
                 <Dialog onOpenChange={(open) => open && fetchCsvData()}>
                   <DialogTrigger asChild>
@@ -877,47 +877,33 @@ export default function SettingsTab() {
                   </DialogTrigger>
                   <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-white text-gray-800">
                     <DialogHeader>
-                      <DialogTitle>Current Employee Data</DialogTitle>
+                      <DialogTitle>Current Holiday Records</DialogTitle>
                       <DialogDescription>
                         Displaying the first 50 rows of the currently stored CSV file.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="mt-4">
-                      {isLoadingCsvData ? (
+                      {isLoadingHolidayCsvData ? (
                         <div className="flex justify-center items-center h-32">
                           <p>Loading file content...</p>
                         </div>
-                      ) : csvData && csvData.length > 0 ? (
+                      ) : csvHolidayData && csvHolidayData.length > 0 ? (
                         <Table>
                           <TableHeader className="sticky top-0 bg-white">
                             <TableRow>
-                              <TableHead>Employee ID</TableHead>
-                              <TableHead>Name</TableHead>
-                              <TableHead>Email</TableHead>
-                              <TableHead>Project</TableHead>
-                              <TableHead>Client</TableHead>
-                              <TableHead>Hours</TableHead>
+                              <TableHead>Holiday</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Description</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {csvData.map((employee, employeeIndex) =>
-                              employee.projects.map((project: any, projectIndex: number) => (
-                                <TableRow key={`${employee.employee_id}-${projectIndex}`}>
-                                  <TableCell className="text-gray-600">
-                                    {projectIndex === 0 ? employee.employee_id : ""}
-                                  </TableCell>
-                                  <TableCell className="text-gray-600">
-                                    {projectIndex === 0 ? employee.name : ""}
-                                  </TableCell>
-                                  <TableCell className="text-gray-600">
-                                    {projectIndex === 0 ? employee.email_id : ""}
-                                  </TableCell>
-                                  <TableCell className="text-gray-600">{project.project}</TableCell>
-                                  <TableCell className="text-gray-600">{project.client}</TableCell>
-                                  <TableCell className="text-gray-600">{project.hours}</TableCell>
-                                </TableRow>
-                              ))
-                            )}
+                            {csvHolidayData.map((holiday: any, index: number) => (
+                              <TableRow key={index}>
+                                <TableCell className="text-gray-600">{holiday.holiday}</TableCell>
+                                <TableCell className="text-gray-600">{holiday.holiday_date}</TableCell>
+                                <TableCell className="text-gray-600">{holiday.holiday_description}</TableCell>
+                              </TableRow>
+                            ))}
                           </TableBody>
                         </Table>
                       ) : (
@@ -932,7 +918,7 @@ export default function SettingsTab() {
                   variant="outline" 
                   size="sm" 
                   className="flex items-center gap-1 border-gray-300 text-gray-800 bg-white"
-                  onClick={handleDownloadCsv}
+                  onClick={handleHolidayDownloadCsv}
                 >
                   <DownloadIcon className="w-4 h-4" /> Download CSV
                 </Button>
@@ -943,9 +929,9 @@ export default function SettingsTab() {
           {csvUploaded && (
             <Alert className="bg-green-50 border-green-200">
               <CheckCircle className="h-4 w-4 text-green-500" />
-              <AlertTitle className="text-green-700">Employee Data Saved</AlertTitle>
+              <AlertTitle className="text-green-700">Holiday Data Saved</AlertTitle>
               <AlertDescription className="text-green-600">
-                Your employee data is saved and will be fetched automatically.
+                Your holiday data is saved and will be fetched automatically.
               </AlertDescription>
             </Alert>
           )}
@@ -981,7 +967,7 @@ export default function SettingsTab() {
               </div>
               <p className="text-lg font-medium mb-2">Drag and drop your CSV file here</p>
               <p className="text-sm text-gray-500">or click to browse files</p>
-              {csvUploaded && <p className="text-sm text-green-600 mt-2">Upload a new file to replace existing data</p>}
+              {csvHolidayUploaded && <p className="text-sm text-green-600 mt-2">Upload a new file to replace existing data</p>}
             </div>
           </div>
 
@@ -994,12 +980,12 @@ export default function SettingsTab() {
             disabled={isUploading}
           />
 
-          {csvFile && (
+          {csvHolidayFile && (
             <div className="bg-gray-100 p-4 rounded-lg">
-              <h4 className="font-medium">{csvFile.name}</h4>
+              <h4 className="font-medium">{csvHolidayFile.name}</h4>
               <p className="text-sm text-gray-600">
-                {csvUploaded ? `Successfully uploaded (${csvRecordCount} records) • ` : ""}
-                {(csvFile.size / 1024).toFixed(1)} KB
+                {csvHolidayUploaded ? `Successfully uploaded (${csvHolidayRecordCount} records) • ` : ""}
+                {(csvHolidayFile.size / 1024).toFixed(1)} KB
               </p>
             </div>
           )}
