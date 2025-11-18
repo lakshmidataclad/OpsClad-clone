@@ -340,7 +340,7 @@ export default function SettingsTab() {
   }
 
     setIsUploading(true)
-    setCsvFile(file)
+    setHolidayFile(file)
 
   
   try{
@@ -498,7 +498,7 @@ export default function SettingsTab() {
 
   const handleHolidayFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      handleFileUpload(e.target.files[0])
+      handleHolidayUpload(e.target.files[0])
     }
   }
 
@@ -873,9 +873,6 @@ export default function SettingsTab() {
               isDragging ? "border-red-500 bg-gray-100" : "border-gray-300"
             } ${isUploading ? "opacity-50 pointer-events-none" : ""}`}
             onClick={() => document.getElementById("csv-file-input")?.click()}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
           >
             <div className="flex flex-col items-center">
               <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-white mb-4">
