@@ -763,32 +763,36 @@ export default function SettingsTab() {
           )}
         </CardContent>
       </Card>
-
       <Card className="bg-white text-gray-800 mt-8">
         <CardHeader>
           <CardTitle>Holiday Data Upload</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${holidaysUploaded ? "bg-green-500" : "bg-red-500"}`}></div>
-                <span>
-                  {holidaysUploaded ? (
-                    <span className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      CSV uploaded
-                    </span>
-                  ) : (
-                    "No CSV uploaded"
-                  )}
-                </span>
-              </div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${holidaysUploaded ? "bg-green-500" : "bg-red-500"}`}></div>
+              <span>
+                {holidaysUploaded ? (
+                  <span className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    CSV uploaded
+                  </span>
+                ) : (
+                  "No CSV uploaded"
+                )}
+              </span>
+            </div>
+
             {holidaysUploaded && (
               <div className="flex gap-2">
                 <Dialog onOpenChange={(open) => open && fetchHolidayData()}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="flex items-center gap-1 border-gray-300 text-gray-800 bg-white">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-1 border-gray-300 text-gray-800 bg-white"
+                    >
                       <FileTextIcon className="w-4 h-4" /> View File
                     </Button>
                   </DialogTrigger>
@@ -800,12 +804,13 @@ export default function SettingsTab() {
                     <DialogDescription>
                       Displaying the first 50 rows of the currently stored CSV file.
                     </DialogDescription>
+
                     <div className="mt-4">
                       {isLoadingHolidayData ? (
                         <div className="flex justify-center items-center h-32">
                           <p>Loading file content...</p>
                         </div>
-                      ) : holidayData && holidayData.length > 0? (
+                      ) : holidayData && holidayData.length > 0 ? (
                         <Table>
                           <TableHeader className="sticky top-0 bg-white">
                             <TableRow>
@@ -824,17 +829,18 @@ export default function SettingsTab() {
                             ))}
                           </TableBody>
                         </Table>
+                        
                       ) : (
                         <p className="text-center text-gray-500 py-8">
                           No data to display. The file may be empty or corrupted.
-                        </p>                      
+                        </p>
                       )}
                     </div>
                   </DialogContent>
                 </Dialog>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="flex items-center gap-1 border-gray-300 text-gray-800 bg-white"
                   onClick={handleDownloadHolidays}
                 >
@@ -844,35 +850,38 @@ export default function SettingsTab() {
             )}
           </div>
 
-          {holidaysUploaded && (
-            <Alert className="bg-green-50 border-green-200">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <AlertTitle className="text-green-700">Holiday Data Saved</AlertTitle>
-              <AlertDescription className="text-green-600">
-                Your holiday data is saved and will be fetched automatically.
-              </AlertDescription>
-            </Alert>
-          )}
-          
           <Alert className="bg-blue-50 border-blue-200">
             <InfoIcon className="h-4 w-4 text-blue-500" />
             <AlertTitle className="text-blue-500">Holiday CSV Requirements:</AlertTitle>
             <AlertDescription className="text-gray-700">
               <ul className="list-disc ml-5 space-y-1">
                 <li>
-                  Required columns: <strong>holiday</strong>, <strong>holiday_date (YYYY-MM-DD)</strong>, <strong>holiday_description</strong>,{" "}
+                  Required columns: <strong>holiday</strong>, <strong>holiday_date</strong>,{" "}
+                  <strong>holiday_description</strong>
                 </li>
                 <li>Column names are case-insensitive</li>
                 <li>File must be in CSV format</li>
-                <li>Each row should contain one holiday for a day. If there are multiple days for the same holiday, create multiple rows seperately for the respective dates.</li>
               </ul>
             </AlertDescription>
           </Alert>
-         <div
+
+          {/* HOLIDAY UPLOAD BOX */}
+          <div
             className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-all ${
               isDragging ? "border-red-500 bg-gray-100" : "border-gray-300"
             } ${isUploading ? "opacity-50 pointer-events-none" : ""}`}
-            onClick={() => document.getElementById("csv-file-input")?.click()}
+            onClick={() => document.getElementById("holiday-csv-file")?.click()}
+            onDragOver={(e) => {
+              e.preventDefault()
+              setIsDragging(true)
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault()
+              setIsDragging(false)
+              if (e.dataTransfer.files?.length > 0)
+                handleHolidayUpload(e.dataTransfer.files[0])
+            }}
           >
             <div className="flex flex-col items-center">
               <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-white mb-4">
@@ -880,32 +889,33 @@ export default function SettingsTab() {
               </div>
               <p className="text-lg font-medium mb-2">Drag and drop your CSV file here</p>
               <p className="text-sm text-gray-500">or click to browse files</p>
-              {holidaysUploaded && <p className="text-sm text-green-600 mt-2">Upload a new file to replace existing data</p>}
+              {holidaysUploaded && (
+                <p className="text-sm text-green-600 mt-2">Upload a new file to replace existing data</p>
+              )}
             </div>
           </div>
 
+          {/* FIXED: HOLIDAY INPUT FIELD */}
           <input
             type="file"
-            id="csv-file-input"
+            id="holiday-csv-file"
             accept=".csv"
             className="hidden"
             onChange={handleHolidayFileSelect}
             disabled={isUploading}
           />
 
-          {csvFile && (
+          {holidayFile && (
             <div className="bg-gray-100 p-4 rounded-lg">
-              <h4 className="font-medium">{csvFile.name}</h4>
+              <h4 className="font-medium">{holidayFile.name}</h4>
               <p className="text-sm text-gray-600">
-                {holidaysUploaded ? `Successfully uploaded (${csvRecordCount} records) • ` : ""}
-                {(csvFile.size / 1024).toFixed(1)} KB
+                {(holidayFile.size / 1024).toFixed(1)} KB
               </p>
             </div>
           )}
-
-          
         </CardContent>
       </Card>
+
 
     </div>
   )

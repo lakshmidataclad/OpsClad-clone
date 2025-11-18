@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const required = ["holiday_name", "holiday_date", "holiday_description"];
+  const required = ["holiday", "holiday_date", "holiday_description"];
   const headers = Object.keys(data[0]).map(h => h.toLowerCase());
   const missing = required.filter(c => !headers.includes(c));
 
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   await supabase.from("holidays").delete().neq("id", 0);
 
   const rows = data.map((r) => ({
-    holiday_name: r.holiday_name,
+    holiday: r.holiday,
     holiday_date: r.holiday_date,
     holiday_description: r.holiday_description,
   }));
