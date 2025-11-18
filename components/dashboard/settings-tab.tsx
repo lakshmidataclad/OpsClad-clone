@@ -269,31 +269,6 @@ export default function SettingsTab() {
       return
     }
 
-    const handleHolidayUpload = async (file: File) => {
-    if (!currentUser) {
-      toast({ title: "Authentication required", variant: "destructive" });
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("userId", currentUser.user_id);
-
-    const res = await fetch("/api/upload-holidays", {
-      method: "POST",
-      body: formData,
-    });
-
-    const data = await res.json();
-    if (data.success) {
-      setHolidaysUploaded(true);
-      toast({ title: "Holiday CSV uploaded", description: data.message });
-    } else {
-      toast({ title: "Upload failed", description: data.message, variant: "destructive" });
-    }
-  };
-
-
     setIsUploading(true)
     setCsvFile(file)
 
@@ -335,6 +310,77 @@ export default function SettingsTab() {
       setIsUploading(false)
     }
   }
+
+  const handleHolidayUpload = async (file: File) => {
+  if (!currentUser) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to upload a file.",
+          variant: "destructive",
+        })
+        return
+      }
+    
+  if (!file.name.toLowerCase().endsWith(".csv")) {
+    toast({
+      title: "Invalid file",
+      description: "Please upload a CSV file.",
+      variant: "destructive",
+    })
+    return
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    toast({
+      title: "File too large",
+      description: "File size must be less than 5MB.",
+      variant: "destructive",
+    })
+    return
+  }
+
+    setIsUploading(true)
+    setCsvFile(file)
+
+  
+  try{
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("userId", currentUser.user_id)
+
+      const res = await fetch("/api/upload-holidays-csv", {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        setHolidaysUploaded(true)  
+        setCsvRecordCount(data.record_count || 0)
+        toast({
+          title: "CSV uploaded",
+          description: data.message || "Holiday data has been successfully uploaded and saved.",
+        })
+      } else {
+        toast({
+          title: "Upload failed",
+          description: data.message || "Failed to upload CSV file.",
+          variant: "destructive",
+        })
+      }
+    }
+    catch (error) {
+        console.error("Upload error:", error)
+        toast({
+          title: "Upload error",
+          description: "An error occurred while uploading the file.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsUploading(false)
+      }
+}
+
 
   const handleDownloadCsv = async () => {
     if (!currentUser) {
@@ -420,16 +466,41 @@ export default function SettingsTab() {
   }
 
   const handleDownloadHolidays = async () => {
-    const res = await fetch(`/api/download-holidays?userId=${currentUser.user_id}`);
-    const text = await res.text();
+    try{
+      const res = await fetch(`/api/download-holidays?userId=${currentUser.user_id}`);
+      const text = await res.text()
 
-    const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "holidays.csv";
-    a.click();
-  };
+      const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+
+      a.setAttribute("href", url)
+      a.setAttribute("download", `holiday_data_${new Date().toISOString().split('T')[0]}.csv`)
+      a.style.visibility = "hidden"
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      
+      toast({
+        title: "Download started",
+        description: "Your CSV file is being downloaded.",
+      })
+      }
+      catch (error) {
+      console.error("Download error:", error)
+      toast({
+        title: "Download error",
+        description: "An error occurred while downloading the file.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleHolidayFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleFileUpload(e.target.files[0])
+    }
+  }
 
 
   if (isLoading) {
@@ -747,7 +818,7 @@ export default function SettingsTab() {
                         <TableBody>
                           {holidayData.map((h, i) => (
                             <TableRow key={i}>
-                              <TableCell>{h.holiday_name}</TableCell>
+                              <TableCell>{h.holiday}</TableCell>
                               <TableCell>{h.holiday_date}</TableCell>
                               <TableCell>{h.holiday_description}</TableCell>
                             </TableRow>
@@ -772,35 +843,58 @@ export default function SettingsTab() {
               </div>
             )}
           </div>
-
-          <Alert>
-            <AlertTitle>Holiday CSV Requirements</AlertTitle>
-            <AlertDescription>
-              Required columns:
-              <ul>
-                <li>holiday_name</li>
-                <li>holiday_date (YYYY-MM-DD)</li>
-                <li>holiday_description</li>
+          <Alert className="bg-blue-50 border-blue-200">
+            <InfoIcon className="h-4 w-4 text-blue-500" />
+            <AlertTitle className="text-blue-500">Holiday CSV Requirements:</AlertTitle>
+            <AlertDescription className="text-gray-700">
+              <ul className="list-disc ml-5 space-y-1">
+                <li>
+                  Required columns: <strong>holiday</strong>, <strong>holiday_date (YYYY-MM-DD)</strong>, <strong>holiday_description</strong>,{" "}
+                </li>
+                <li>Column names are case-insensitive</li>
+                <li>File must be in CSV format</li>
+                <li>Each row should contain one holiday for a day. If there are multiple days for the same holiday, create multiple rows seperately for the respective dates.</li>
               </ul>
             </AlertDescription>
           </Alert>
-
-          <div
-            className="border-2 border-dashed rounded-lg p-10 text-center cursor-pointer"
-            onClick={() => document.getElementById("holiday-file").click()}
+         <div
+            className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-all ${
+              isDragging ? "border-red-500 bg-gray-100" : "border-gray-300"
+            } ${isUploading ? "opacity-50 pointer-events-none" : ""}`}
+            onClick={() => document.getElementById("holiday-file")?.click()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
           >
-            <UploadIcon className="w-6 h-6 mx-auto mb-3" />
-            <p>Upload Holidays CSV</p>
+            <div className="flex flex-col items-center">
+              <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-white mb-4">
+                <UploadIcon className="h-6 w-6" />
+              </div>
+              <p className="text-lg font-medium mb-2">Drag and drop your CSV file here</p>
+              <p className="text-sm text-gray-500">or click to browse files</p>
+              {csvUploaded && <p className="text-sm text-green-600 mt-2">Upload a new file to replace existing data</p>}
+            </div>
           </div>
 
           <input
-            id="holiday-file"
             type="file"
+            id="csv-file-input"
             accept=".csv"
             className="hidden"
-            onChange={(e) => handleHolidayUpload(e.target.files[0])}
+            onChange={handleHolidayFileSelect}
+            disabled={isUploading}
           />
-        
+
+          {csvFile && (
+            <div className="bg-gray-100 p-4 rounded-lg">
+              <h4 className="font-medium">{csvFile.name}</h4>
+              <p className="text-sm text-gray-600">
+                {csvUploaded ? `Successfully uploaded (${csvRecordCount} records) • ` : ""}
+                {(csvFile.size / 1024).toFixed(1)} KB
+              </p>
+            </div>
+          )}
+
           
         </CardContent>
       </Card>
