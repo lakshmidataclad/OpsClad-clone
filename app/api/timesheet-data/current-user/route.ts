@@ -64,11 +64,52 @@ export async function GET(req: Request) {
     updated_at: pto.updated_at
   }))
 
+
+
+
+
+
+  //Fetch Holidays (holiday_date only)
+  const { data: holidays, error: holidayError } = await supabase
+    .from("holidays")
+    .select("*")
+
+  if (holidayError) console.error("Holiday data error:", holidayError)
+
+  //Transform holidays → Auto PTO entries
+  const transformedHolidayData = (holidays || []).map(h => ({
+    id: `HOLIDAY-${h.holiday}-${h.holiday_date}`,
+    employee_id: profile.employee_id,
+    employee_name: "", // or fetch from profile if needed
+    sender_email: user.email,
+    date: h.holiday_date,
+    day: new Date(h.holiday_date).toLocaleDateString("en-US", { weekday: "long" }),
+    hours: 8,
+    activity: `Holiday – ${h.holiday}`,
+    client: "",
+    project: "",
+    required_hours: 8,
+    created_at: h.created_at,
+    updated_at: h.updated_at,
+    holiday_description: h.holiday_description,
+  }))
+
+
+
+
+
+
+
+
   // 6. Combine timesheet and PTO data
   const combinedData = [
     ...(timesheetData || []),
-    ...transformedPtoData
+    ...transformedPtoData,
+    //holiday data
+    ...transformedHolidayData
+
   ]
+  
 
   // 7. Sort by date (most recent first)
   combinedData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
