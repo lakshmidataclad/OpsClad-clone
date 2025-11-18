@@ -870,7 +870,7 @@ export default function SettingsTab() {
             className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-all ${
               isDragging ? "border-red-500 bg-gray-100" : "border-gray-300"
             } ${isUploading ? "opacity-50 pointer-events-none" : ""}`}
-            onClick={() => document.getElementById("holiday-csv-file")?.click()}
+            onClick={() => document.getElementById("/api/upload-holidays-csv")?.click()}
             onDragOver={(e) => {
               e.preventDefault()
               setIsDragging(true)
@@ -895,7 +895,7 @@ export default function SettingsTab() {
             </div>
           </div>
 
-          {/* FIXED: HOLIDAY INPUT FIELD */}
+          {/* FIXED: HOLIDAY INPUT FIELD */} 
           <input
             type="file"
             id="holiday-csv-file"
