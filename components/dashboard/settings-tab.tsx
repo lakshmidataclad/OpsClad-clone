@@ -770,26 +770,20 @@ export default function SettingsTab() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${holidaysUploaded ? "bg-green-500" : "bg-red-500"}`}></div>
-              <span>
-                {csvUploaded ? (
-                  <span className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    CSV uploaded
-                  </span>
-                ) : (
-                  "No CSV uploaded"
-                )}
-              </span>
-            </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${holidaysUploaded ? "bg-green-500" : "bg-red-500"}`}></div>
-              <span>{holidaysUploaded ? "Holidays CSV Uploaded" : "No Holidays CSV uploaded"}</span>
-            </div>
-
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${holidaysUploaded ? "bg-green-500" : "bg-red-500"}`}></div>
+                <span>
+                  {holidaysUploaded ? (
+                    <span className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      CSV uploaded
+                    </span>
+                  ) : (
+                    "No CSV uploaded"
+                  )}
+                </span>
+              </div>
             {holidaysUploaded && (
               <div className="flex gap-2">
                 <Dialog onOpenChange={(open) => open && fetchHolidayData()}>
@@ -878,7 +872,7 @@ export default function SettingsTab() {
             className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-all ${
               isDragging ? "border-red-500 bg-gray-100" : "border-gray-300"
             } ${isUploading ? "opacity-50 pointer-events-none" : ""}`}
-            onClick={() => document.getElementById("holiday-file")?.click()}
+            onClick={() => document.getElementById("csv-file-input")?.click()}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
