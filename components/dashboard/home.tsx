@@ -28,7 +28,7 @@ interface Employee {
 
 interface HolidayRecord{
   id: string
-  holiday_name: string
+  holiday: string
   holiday_date: string
   holiday_description: string
 }
@@ -242,7 +242,7 @@ const DateDetailsModal = ({ selectedDate, onClose }: { selectedDate: SelectedDat
                     <div className="flex items-center gap-3">
                       <User className="w-4 h-4 text-orange-400" />
                       <div>
-                        <p className="text-white font-medium">{holiday.holiday_name}</p>
+                        <p className="text-white font-medium">{holiday.holiday}</p>
                         <p className="text-orange-300 text-sm">Public Holiday! 🎉</p>
                       </div>
                     </div>
@@ -314,7 +314,7 @@ export default function HomePage() {
       // Load Holidays
       const { data: holidays, error: holidayError } = await supabase
         .from('holidays')
-        .select('id, holiday_name, holiday_date, holiday_description')
+        .select('id, holiday, holiday_date, holiday_description')
         .not('holiday_date', 'is', null)
 
       if (holidayError) {
