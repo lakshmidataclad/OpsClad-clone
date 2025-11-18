@@ -799,35 +799,43 @@ export default function SettingsTab() {
                     </Button>
                   </DialogTrigger>
 
-                  <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-white text-gray-800">
                     <DialogHeader>
-                      <DialogTitle>Holiday Data</DialogTitle>
+                      <DialogTitle>Current Holiday Data</DialogTitle>
                     </DialogHeader>
-
-                    {isLoadingHolidayData ? (
-                      <p>Loading…</p>
-                    ) : holidayData?.length ? (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Description</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {holidayData.map((h, i) => (
-                            <TableRow key={i}>
-                              <TableCell>{h.holiday}</TableCell>
-                              <TableCell>{h.holiday_date}</TableCell>
-                              <TableCell>{h.holiday_description}</TableCell>
+                    <DialogDescription>
+                      Displaying the first 50 rows of the currently stored CSV file.
+                    </DialogDescription>
+                    <div className="mt-4">
+                      {isLoadingHolidayData ? (
+                        <div className="flex justify-center items-center h-32">
+                          <p>Loading file content...</p>
+                        </div>
+                      ) : holidayData && holidayData.length > 0? (
+                        <Table>
+                          <TableHeader className="sticky top-0 bg-white">
+                            <TableRow>
+                              <TableHead>Name</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Description</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    ) : (
-                      <p>No holidays found.</p>
-                    )}
+                          </TableHeader>
+                          <TableBody>
+                            {holidayData.map((h, i) => (
+                              <TableRow key={i}>
+                                <TableCell>{h.holiday}</TableCell>
+                                <TableCell>{h.holiday_date}</TableCell>
+                                <TableCell>{h.holiday_description}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <p className="text-center text-gray-500 py-8">
+                          No data to display. The file may be empty or corrupted.
+                        </p>                      
+                      )}
+                    </div>
                   </DialogContent>
                 </Dialog>
                 <Button 
@@ -838,11 +846,20 @@ export default function SettingsTab() {
                 >
                   <DownloadIcon className="w-4 h-4" /> Download CSV
                 </Button>
-
-
               </div>
             )}
           </div>
+
+          {holidaysUploaded && (
+            <Alert className="bg-green-50 border-green-200">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <AlertTitle className="text-green-700">Holiday Data Saved</AlertTitle>
+              <AlertDescription className="text-green-600">
+                Your holiday data is saved and will be fetched automatically.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <Alert className="bg-blue-50 border-blue-200">
             <InfoIcon className="h-4 w-4 text-blue-500" />
             <AlertTitle className="text-blue-500">Holiday CSV Requirements:</AlertTitle>
@@ -872,7 +889,7 @@ export default function SettingsTab() {
               </div>
               <p className="text-lg font-medium mb-2">Drag and drop your CSV file here</p>
               <p className="text-sm text-gray-500">or click to browse files</p>
-              {csvUploaded && <p className="text-sm text-green-600 mt-2">Upload a new file to replace existing data</p>}
+              {holidaysUploaded && <p className="text-sm text-green-600 mt-2">Upload a new file to replace existing data</p>}
             </div>
           </div>
 
@@ -889,7 +906,7 @@ export default function SettingsTab() {
             <div className="bg-gray-100 p-4 rounded-lg">
               <h4 className="font-medium">{csvFile.name}</h4>
               <p className="text-sm text-gray-600">
-                {csvUploaded ? `Successfully uploaded (${csvRecordCount} records) • ` : ""}
+                {holidaysUploaded ? `Successfully uploaded (${csvRecordCount} records) • ` : ""}
                 {(csvFile.size / 1024).toFixed(1)} KB
               </p>
             </div>
