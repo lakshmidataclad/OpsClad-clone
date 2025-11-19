@@ -790,7 +790,7 @@ export default function SettingsTab() {
 
             {holidaysUploaded && (
               <div className="flex gap-2">
-                <Dialog onOpenChange={(open) => open && fetchHolidayData()}>
+                <Dialog onOpenChange={async (open) => open && await fetchHolidayData()}>
                   <DialogTrigger asChild>
                     <Button
                       variant="outline"
