@@ -41,10 +41,12 @@ export default function SettingsTab() {
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
-  const [holidaysUploaded, setHolidaysUploaded] = useState(false);
-  const [holidayFile, setHolidayFile] = useState<File | null>(null);
-  const [holidayData, setHolidayData] = useState<any[] | null>(null);
-  const [isLoadingHolidayData, setIsLoadingHolidayData] = useState(false);
+  const [holidaysUploaded, setHolidaysUploaded] = useState(false)
+  const [holidayFile, setHolidayFile] = useState<File | null>(null)
+  const [holidayData, setHolidayData] = useState<any[] | null>(null)
+  const [isLoadingHolidayData, setIsLoadingHolidayData] = useState(false)
+  const [isUploadingHoliday, setIsUploadingHoliday] = useState(false)
+
 
 
   // Load data on component mount - same as ReminderEmailTab
@@ -339,7 +341,7 @@ export default function SettingsTab() {
     return
   }
 
-    setIsUploading(true)
+    setIsUploadingHoliday(true)
     setHolidayFile(file)
 
   
@@ -377,7 +379,7 @@ export default function SettingsTab() {
           variant: "destructive",
         })
       } finally {
-        setIsUploading(false)
+        setIsUploadingHoliday(false)
       }
 }
 
@@ -869,8 +871,8 @@ export default function SettingsTab() {
           <div
             className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-all ${
               isDragging ? "border-red-500 bg-gray-100" : "border-gray-300"
-            } ${isUploading ? "opacity-50 pointer-events-none" : ""}`}
-            onClick={() => document.getElementById("/api/upload-holidays-csv")?.click()}
+            } ${isUploadingHoliday ? "opacity-50 pointer-events-none" : ""}`}
+            onClick={() => document.getElementById("holiday-csv-file")?.click()}
             onDragOver={(e) => {
               e.preventDefault()
               setIsDragging(true)
@@ -902,7 +904,7 @@ export default function SettingsTab() {
             accept=".csv"
             className="hidden"
             onChange={handleHolidayFileSelect}
-            disabled={isUploading}
+            disabled={isUploadingHoliday}
           />
 
           {holidayFile && (
