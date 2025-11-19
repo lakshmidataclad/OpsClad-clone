@@ -134,18 +134,42 @@ export default function SettingsTab() {
   }
 
   const fetchHolidayData = async () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to view holiday data.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    setIsLoadingHolidayData(true);
+    setIsLoadingHolidayData(true)
 
-    const res = await fetch(`/api/get-holidays?userId=${currentUser.user_id}`);
-    const data = await res.json();
+    try {
+      const res = await fetch(`/api/get-holidays?userId=${currentUser.user_id}`);
+      const data = await res.json()
 
-    if (data.success) setHolidayData(data.data);
-    else setHolidayData(null);
+      if (res.ok && data.success) {
+        setHolidayData(data.data)
+      } else {
+        toast({
+          title: "Failed to load holiday CSV",
+          description: data.message || "Error fetching holiday data.",
+          variant: "destructive",
+        });
+        setHolidayData([])
+      }
+    } catch (err) {
+      toast({
+        title: "Network Error",
+        description: "Could not connect to load holiday data.",
+        variant: "destructive",
+      });
+      setHolidayData([])
+    }
 
-    setIsLoadingHolidayData(false);
-  };
+    setIsLoadingHolidayData(false)
+  }
 
   const handleGmailConnection = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -790,7 +814,7 @@ export default function SettingsTab() {
 
             {holidaysUploaded && (
               <div className="flex gap-2">
-                <Dialog onOpenChange={async (open) => open && await fetchHolidayData()}>
+                <Dialog onOpenChange={(open) => open && fetchHolidayData()}>
                   <DialogTrigger asChild>
                     <Button
                       variant="outline"
