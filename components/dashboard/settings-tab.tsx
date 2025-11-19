@@ -889,6 +889,7 @@ export default function SettingsTab() {
                 </li>
                 <li>Column names are case-insensitive</li>
                 <li>File must be in CSV format</li>
+                <li>Each row should contain one date per row. If there are multiple days for the same holiday event, create as many rows needed respectively.</li>
               </ul>
             </AlertDescription>
           </Alert>
