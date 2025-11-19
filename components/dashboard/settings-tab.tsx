@@ -46,6 +46,8 @@ export default function SettingsTab() {
   const [holidayData, setHolidayData] = useState<any[] | null>(null)
   const [isLoadingHolidayData, setIsLoadingHolidayData] = useState(false)
   const [isUploadingHoliday, setIsUploadingHoliday] = useState(false)
+  const [isDraggingHoliday, setIsDraggingHoliday] = useState(false)
+
 
 
 
@@ -870,17 +872,17 @@ export default function SettingsTab() {
           {/* HOLIDAY UPLOAD BOX */}
           <div
             className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-all ${
-              isDragging ? "border-red-500 bg-gray-100" : "border-gray-300"
+              isDraggingHoliday ? "border-red-500 bg-gray-100" : "border-gray-300"
             } ${isUploadingHoliday ? "opacity-50 pointer-events-none" : ""}`}
             onClick={() => document.getElementById("holiday-csv-file")?.click()}
             onDragOver={(e) => {
               e.preventDefault()
-              setIsDragging(true)
+              setIsDraggingHoliday(true)
             }}
-            onDragLeave={() => setIsDragging(false)}
+            onDragLeave={() => setIsDraggingHoliday(false)}
             onDrop={(e) => {
               e.preventDefault()
-              setIsDragging(false)
+              setIsDraggingHoliday(false)
               if (e.dataTransfer.files?.length > 0)
                 handleHolidayUpload(e.dataTransfer.files[0])
             }}
