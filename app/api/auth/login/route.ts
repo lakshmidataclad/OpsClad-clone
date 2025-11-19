@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       .from("profiles")
       .select("username, email")
       .eq("id", data.user.id)
-      .single()
+      .maybeSingle()
 
     if (profileError && profileError.code === "PGRST116") {
       // Create profile if it doesn't exist
