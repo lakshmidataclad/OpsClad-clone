@@ -12,71 +12,84 @@ from typing import Dict, Optional, List
 
 def extract_text_with_ocrspace(image_path: str) -> str:
     """
-    Extract text from image using OCR Space API.
-    
-    Args:
-        image_path (str): Path to the image file
-        
-    Returns:
-        str: Extracted text from the image
+    Extract text from image using OCR Space API with larger timeout
+    and retry logic to prevent ReadTimeout errors.
     """
     try:
-        # Get OCR Space API key from environment
+        # Get OCR Space API key
         ocr_api_key = os.getenv('OCR_KEY')
         if not ocr_api_key:
             raise ValueError("OCR_KEY environment variable is required")
         
         print(f"🔍 Using OCR Space API to extract text from: {os.path.basename(image_path)}", file=sys.stderr)
-        
-        # OCR Space API endpoint
+
         url = "https://api.ocr.space/parse/image"
-        
-        # Prepare the payload
+
         payload = {
             'apikey': ocr_api_key,
             'language': 'eng',
             'isOverlayRequired': 'false',
             'detectOrientation': 'false',
-            'isTable': 'true',  # Enable table detection for better structured data extraction
-            'scale': 'true',    # Auto-scale for better OCR
-            'OCREngine': '2'    # Use OCR Engine 2 for better accuracy
+            'isTable': 'true',
+            'scale': 'true',
+            'OCREngine': '2'
         }
+
+        # --- Compress image if too large (NEW) ---
+        import io
+        from PIL import Image
         
-        # Open and send the image file
-        with open(image_path, 'rb') as image_file:
-            files = {'file': image_file}
+        def compress_if_large(path):
+            max_size = 2_000_000
+            if os.path.getsize(path) <= max_size:
+                return open(path, 'rb')
             
-            print(f"📡 Sending request to OCR Space API...", file=sys.stderr)
-            response = requests.post(url, files=files, data=payload, timeout=30)
-            
-            if response.status_code != 200:
-                raise Exception(f"OCR Space API returned status code {response.status_code}: {response.text}")
-            
-            result = response.json()
-            
-            # Check if OCR was successful
-            if result.get('OCRExitCode') != 1:
-                error_msg = result.get('ErrorMessage', ['Unknown error'])
-                raise Exception(f"OCR failed: {error_msg}")
-            
-            # Extract text from results
-            parsed_results = result.get('ParsedResults', [])
-            if not parsed_results:
-                raise Exception("No parsed results returned from OCR")
-            
-            extracted_text = parsed_results[0].get('ParsedText', '')
-            
-            if not extracted_text.strip():
-                raise Exception("No text was extracted from the image")
-            
-            print(f"✅ OCR extraction successful. Text length: {len(extracted_text)} characters", file=sys.stderr)
-            
-            # Show a preview of extracted text for debugging
-            preview = extracted_text[:500] + "..." if len(extracted_text) > 500 else extracted_text
-            print(f"📝 OCR Preview:\n{preview}", file=sys.stderr)
-            
-            return extracted_text
-            
+            print("📉 Compressing large image before OCR...", file=sys.stderr)
+            img = Image.open(path).convert("RGB")
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", quality=70)
+            buffer.seek(0)
+            return buffer
+
+        image_data = compress_if_large(image_path)
+
+        # --- Retry logic (NEW) ---
+        import requests
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+
+        session = requests.Session()
+        retries = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[500, 502, 503, 504]
+        )
+        session.mount("https://", HTTPAdapter(max_retries=retries))
+
+        print("📡 Sending request to OCR Space API...", file=sys.stderr)
+
+        # --- Increased timeout from 30 → 120 seconds (NEW) ---
+        response = session.post(url, files={'file': image_data}, data=payload, timeout=120)
+
+        if response.status_code != 200:
+            raise Exception(f"OCR Space API returned status code {response.status_code}: {response.text}")
+
+        result = response.json()
+
+        if result.get('OCRExitCode') != 1:
+            raise Exception(f"OCR failed: {result.get('ErrorMessage', 'Unknown error')}")
+
+        parsed_results = result.get('ParsedResults', [])
+        if not parsed_results:
+            raise Exception("No parsed results returned from OCR")
+
+        extracted_text = parsed_results[0].get('ParsedText', '')
+        if not extracted_text.strip():
+            raise Exception("No text extracted from the image")
+
+        print(f"✅ OCR extraction successful. Characters: {len(extracted_text)}", file=sys.stderr)
+        return extracted_text
+
     except Exception as e:
         print(f"❌ Error during OCR extraction: {e}", file=sys.stderr)
         raise
