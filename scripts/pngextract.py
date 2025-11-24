@@ -1,6 +1,7 @@
 from PIL import Image
 import pandas as pd
 from collections import OrderedDict
+from urllib3.util.retry import Retry
 import re
 import datetime
 import sys
