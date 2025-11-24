@@ -11,21 +11,28 @@ import json
 from typing import Dict, Optional, List
 
 
-def extract_text_with_ocrspace(image_path: str) -> str:
+
+def extract_text_with_ocrspace(image_path: str,
+                               timeout: int = 120,
+                               max_attempts: int = 4,
+                               backoff_base: float = 1.5,
+                               use_local_fallback: bool = True) -> str:
     """
-    Extract text from image using OCR Space API with larger timeout
-    and retry logic to prevent ReadTimeout errors.
+    Robust OCR.Space call that retries on transient errors including E101.
+    - Retries the POST when OCR returns E101 or on ReadTimeout/ConnectionError.
+    - Exponential backoff between attempts.
+    - Optional local pytesseract fallback if OCR.Space repeatedly fails.
     """
+    import io
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    import time
     try:
-        # Get OCR Space API key
         ocr_api_key = os.getenv('OCR_KEY')
         if not ocr_api_key:
             raise ValueError("OCR_KEY environment variable is required")
-        
-        print(f"🔍 Using OCR Space API to extract text from: {os.path.basename(image_path)}", file=sys.stderr)
 
         url = "https://api.ocr.space/parse/image"
-
         payload = {
             'apikey': ocr_api_key,
             'language': 'eng',
@@ -36,63 +43,144 @@ def extract_text_with_ocrspace(image_path: str) -> str:
             'OCREngine': '2'
         }
 
-        # --- Compress image if too large (NEW) ---
-        import io
-        from PIL import Image
-        
+        print(f"🔍 OCR.Space extract for: {os.path.basename(image_path)}", file=sys.stderr)
+
+        # Prepare file (compress if large) - same small helper inline
         def compress_if_large(path):
             max_size = 2_000_000
             if os.path.getsize(path) <= max_size:
                 return open(path, 'rb')
-            
-            print("📉 Compressing large image before OCR...", file=sys.stderr)
             img = Image.open(path).convert("RGB")
-            buffer = io.BytesIO()
-            img.save(buffer, format="JPEG", quality=70)
-            buffer.seek(0)
-            return buffer
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=70)
+            buf.seek(0)
+            return buf
 
-        image_data = compress_if_large(image_path)
+        file_obj = compress_if_large(image_path)
 
-        # --- Retry logic (NEW) ---
-        import requests
-        from requests.adapters import HTTPAdapter
-        from urllib3.util.retry import Retry
-
+        # Prepare session with basic retries for connection-level errors
         session = requests.Session()
-        retries = Retry(
-            total=3,
-            backoff_factor=1,
-            status_forcelist=[500, 502, 503, 504]
-        )
+        retries = Retry(total=2, backoff_factor=0.2, status_forcelist=[429, 500, 502, 503, 504])
         session.mount("https://", HTTPAdapter(max_retries=retries))
+        session.mount("http://", HTTPAdapter(max_retries=retries))
 
-        print("📡 Sending request to OCR Space API...", file=sys.stderr)
+        last_error = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                print(f"📡 Attempt {attempt}/{max_attempts} - sending to OCR.Space (timeout={timeout}s)...", file=sys.stderr)
+                # rewind buffer if necessary
+                try:
+                    file_obj.seek(0)
+                except Exception:
+                    pass
 
-        # --- Increased timeout from 30 → 120 seconds (NEW) ---
-        response = session.post(url, files={'file': image_data}, data=payload, timeout=120)
+                response = session.post(url, files={'file': file_obj}, data=payload, timeout=timeout)
 
-        if response.status_code != 200:
-            raise Exception(f"OCR Space API returned status code {response.status_code}: {response.text}")
+                if response is None:
+                    raise Exception("No response (session retries exhausted)")
 
-        result = response.json()
+                # if non-200, raise and potentially retry
+                if response.status_code != 200:
+                    last_error = Exception(f"Status {response.status_code}: {response.text[:500]}")
+                    print(f"⚠ Non-200 status: {response.status_code}", file=sys.stderr)
+                    raise last_error
 
-        if result.get('OCRExitCode') != 1:
-            raise Exception(f"OCR failed: {result.get('ErrorMessage', 'Unknown error')}")
+                # parse json
+                try:
+                    result = response.json()
+                except ValueError:
+                    last_error = Exception("Invalid JSON response from OCR.Space")
+                    raise last_error
 
-        parsed_results = result.get('ParsedResults', [])
-        if not parsed_results:
-            raise Exception("No parsed results returned from OCR")
+                # If OCRExitCode indicates failure, check ErrorMessage for E101 and retry
+                exit_code = result.get('OCRExitCode')
+                if exit_code != 1:
+                    errs = result.get('ErrorMessage') or result.get('ErrorDetails') or []
+                    # normalize to list of strings
+                    if isinstance(errs, str):
+                        errs = [errs]
+                    # detect E101 (timed out waiting)
+                    joined_errs = " ".join(str(e).upper() for e in errs)
+                    print(f"❗ OCR returned exit code {exit_code}, errors: {joined_errs}", file=sys.stderr)
 
-        extracted_text = parsed_results[0].get('ParsedText', '')
-        if not extracted_text.strip():
-            raise Exception("No text extracted from the image")
+                    if "E101" in joined_errs or "TIMED OUT" in joined_errs or response.status_code in (429, 503):
+                        # transient: sleep and retry
+                        wait = backoff_base ** (attempt - 1)
+                        print(f"⏳ Transient OCR error detected (E101 or timeout). Backing off {wait:.1f}s then retrying...", file=sys.stderr)
+                        time.sleep(wait)
+                        last_error = Exception(f"OCR transient error: {joined_errs}")
+                        continue
+                    else:
+                        # non-transient error: raise immediately
+                        raise Exception(f"OCR failed: {errs}")
 
-        print(f"✅ OCR extraction successful. Characters: {len(extracted_text)}", file=sys.stderr)
-        return extracted_text
+                parsed = result.get('ParsedResults') or []
+                if not parsed:
+                    last_error = Exception("No ParsedResults returned")
+                    raise last_error
 
-    except Exception as e:
-        print(f"❌ Error during OCR extraction: {e}", file=sys.stderr)
+                extracted_text = parsed[0].get('ParsedText', '')
+                if not extracted_text.strip():
+                    last_error = Exception("Empty ParsedText")
+                    raise last_error
+
+                print(f"✅ OCR success (len={len(extracted_text)}).", file=sys.stderr)
+                return extracted_text
+
+            except requests.exceptions.ReadTimeout as rt:
+                last_error = rt
+                wait = backoff_base ** (attempt - 1)
+                print(f"❌ ReadTimeout on attempt {attempt}: {rt}. Sleeping {wait:.1f}s and retrying...", file=sys.stderr)
+                time.sleep(wait)
+                continue
+            except requests.exceptions.ConnectionError as ce:
+                last_error = ce
+                wait = backoff_base ** (attempt - 1)
+                print(f"❌ ConnectionError on attempt {attempt}: {ce}. Sleeping {wait:.1f}s and retrying...", file=sys.stderr)
+                time.sleep(wait)
+                continue
+            except Exception as e:
+                # Non-transient / final error - either propagate or break to fallback
+                last_error = e
+                # If this is not explicitly transient, break and fallback
+                print(f"❌ Attempt {attempt} failed with error: {e}", file=sys.stderr)
+                # If last attempt, we'll break out and go to fallback
+                if attempt < max_attempts:
+                    wait = backoff_base ** (attempt - 1)
+                    print(f"⏳ Waiting {wait:.1f}s before next attempt...", file=sys.stderr)
+                    time.sleep(wait)
+                    continue
+                else:
+                    break
+
+        # If we get here OCR.Space failed after retries
+        print(f"⚠ OCR.Space failed after {max_attempts} attempts. Last error: {last_error}", file=sys.stderr)
+
+        # Optional: fallback to local pytesseract if available
+        if use_local_fallback:
+            try:
+                print("🔁 Falling back to local pytesseract...", file=sys.stderr)
+                # rewind and open image for pytesseract
+                try:
+                    file_obj.seek(0)
+                    img = Image.open(file_obj)
+                except Exception:
+                    img = Image.open(image_path)
+                import pytesseract
+                local_text = pytesseract.image_to_string(img)
+                if local_text and local_text.strip():
+                    print("✅ Local pytesseract succeeded.", file=sys.stderr)
+                    return local_text
+                else:
+                    print("⚠ Local pytesseract returned no text.", file=sys.stderr)
+            except Exception as local_err:
+                print(f"⚠ Local pytesseract fallback failed: {local_err}", file=sys.stderr)
+
+        # final failure
+        raise Exception(f"OCR failed after {max_attempts} attempts. Last error: {last_error}")
+
+    except Exception as final_e:
+        print(f"❌ Error during OCR extraction: {final_e}", file=sys.stderr)
         raise
 
 
