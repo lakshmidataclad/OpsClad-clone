@@ -42,7 +42,7 @@ def get_supabase_client():
         return None
 
 
-def save_timesheet_entries_to_supabase(entries, table_name="timesheet_entries"):
+def save_timesheet_entries_to_supabase(entries, table_name="timesheets"):
     """
     Save timesheet entries to Supabase with activity column
     
@@ -355,7 +355,7 @@ def process_excel_timesheet(excel_path, email_info, employee_mapping):
 
         # Save all entries to main timesheet table with activity column
         if entries_for_db:
-            save_timesheet_entries_to_supabase(entries_for_db, "timesheet_entries")
+            save_timesheet_entries_to_supabase(entries_for_db, "timesheets")
 
         # Save PTO entries to dedicated PTO table
         if pto_entries:
@@ -440,7 +440,7 @@ def process_pdf_timesheet(pdf_path, email_info, employee_mapping):
 
         # Save all entries to main timesheet table with activity column
         if entries_for_db:
-            save_timesheet_entries_to_supabase(entries_for_db, "timesheet_entries")
+            save_timesheet_entries_to_supabase(entries_for_db, "timesheets")
 
         # Save PTO entries to dedicated PTO table
         if pto_entries:
@@ -542,7 +542,7 @@ def process_image_timesheet(image_path, email_info, employee_mapping):
 
         # Save all entries to main timesheet table with activity column
         if entries_for_db:
-            save_timesheet_entries_to_supabase(entries_for_db, "timesheet_entries")
+            save_timesheet_entries_to_supabase(entries_for_db, "timesheets")
 
         print(f"    ✅ Processed {len([e for e in extracted_data if e['activity'] == 'WORK'])} work entries and {len([e for e in extracted_data if e['activity'] == 'PTO'])} PTO entries", file=sys.stderr)
 
