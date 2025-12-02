@@ -44,7 +44,16 @@ export default function ReportsTab() {
         .select("*")
         .neq("activity", "pto") // Exclude PTO entries
         .neq("activity", "PTO") // Exclude PTO entries (case variations)
+      
+      // Fetch Holiday records
+      const { data: holidayData, error: holidayError } = await supabase
+        .from("holidays")   // <-- change table name if yours is different
+        .select("*")
 
+      if (holidayError) {
+        console.error("Holiday data error:", holidayError)
+      }
+    
       if (timesheetError) {
         console.error("Timesheet data error:", timesheetError)
       }
@@ -76,10 +85,32 @@ export default function ReportsTab() {
         updated_at: pto.updated_at
       }))
 
+    const transformedHolidays = (holidayData || []).map(holiday => ({
+      id: holiday.id,
+      employee_id: holiday.employee_id,
+      employee_name: holiday.employee_name,
+      sender_email: holiday.sender_email,
+      date: holiday.date,
+      day: holiday.day || new Date(holiday.date).toLocaleDateString("en-US", { weekday: "long" }),
+      // PAID LEAVE → Hours counted = required hours
+      hours: Number(holiday.required_hours ?? 8),
+      activity: "Holiday",
+      // No client/project for paid leave
+      client: "",
+      project: "",
+
+      required_hours: Number(holiday.required_hours ?? 8),
+
+      created_at: holiday.created_at,
+      updated_at: holiday.updated_at
+    }))
+
       // Combine timesheet and PTO data
       const combined = [
         ...(timesheetData || []),
-        ...transformedPtoData
+        ...transformedPtoData,
+        ...transformedHolidays
+
       ]
 
       // Sort by date (most recent first)
@@ -137,7 +168,7 @@ export default function ReportsTab() {
 
       // Client filter - for PTO records, client is empty, so only filter non-PTO entries
       if (filters.client && filters.client !== "all") {
-        if (item.activity === "PTO") {
+        if (item.activity === "PTO" || item.activity === "Holiday") {
           // Include PTO records when filtering by client (they should show up in all client filters)
           return true
         } else if (item.client !== filters.client) {
@@ -147,9 +178,10 @@ export default function ReportsTab() {
 
       // Project filter - for PTO records, project is empty, so only filter non-PTO entries
       if (filters.project && filters.project !== "all") {
-        if (item.activity === "PTO") {
+        if (item.activity === "PTO" || item.activity === "Holiday") {
           // Include PTO records when filtering by project (they should show up in all project filters)
           return true
+
         } else if (item.project !== filters.project) {
           return false
         }
@@ -547,14 +579,14 @@ export default function ReportsTab() {
                         <td className="border-b px-4 py-2 text-black">{entry.employee_id || "N/A"}</td>
                         <td className="border-b px-4 py-2 text-black">{entry.employee_name || "N/A"}</td>
                         <td className="border-b px-4 py-2 text-black">
-                          {entry.activity === "PTO" ? (
+                          {entry.activity === "PTO" || entry.activity === "Holiday" ? (
                             <span className="text-gray-500 italic">-</span>
                           ) : (
                             entry.client || "N/A"
                           )}
                         </td>
                         <td className="border-b px-4 py-2 text-black">
-                          {entry.activity === "PTO" ? (
+                          {entry.activity === "PTO" || entry.activity === "Holiday" ? (
                             <span className="text-gray-500 italic">-</span>
                           ) : (
                             entry.project || "N/A"
@@ -565,9 +597,9 @@ export default function ReportsTab() {
                         <td className="border-b px-4 py-2 text-black">{entry.activity || "N/A"}</td>
                         <td
                           className={`border-b px-4 py-2 text-black ${
-                            entry.activity !== "PTO" && entry.hours < entry.required_hours
+                            entry.activity !== "PTO" && entry.activity !== "Holiday" && entry.hours < entry.required_hours
                               ? "bg-red-100"
-                              : entry.activity !== "PTO" && entry.hours > entry.required_hours
+                              : entry.activity !== "PTO" && entry.activity !== "Holiday" && entry.hours < entry.required_hours
                               ? "bg-green-100"
                               : ""
                           }`}
