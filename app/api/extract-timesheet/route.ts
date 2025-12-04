@@ -178,7 +178,7 @@ export async function POST(request: Request) {
       .from("gmail_settings")
       .select("gmail_email, gmail_password")
       .eq("user_id", userId)
-      .single();
+      .maybeSingle();
 
     if (gmailError || !gmailSettings) {
       return NextResponse.json(
