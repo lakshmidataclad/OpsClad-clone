@@ -436,14 +436,16 @@ async function processTimesheetExtraction(
         requiredHours = proj.required_hours || 0;
       }
 
-      // --- HOLIDAY CHECK ---
+      // Fix parsing MM/DD/YYYY correctly
       const [mm, dd, yyyy] = entry.date.split("/");
-      const entryDateISO = `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;      
+      const entryDateISO = `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+
+      // Check holiday
       const isHoliday = holidaySet.has(entryDateISO);
 
-      // Override activity if holiday
-      const finalActivity = isHoliday ? "HOLIDAY" : entry.activity || "WORK";
-
+      // Override activity
+      const finalActivity = isHoliday ? "HOLIDAY" : (entry.activity || "WORK");
+      
       return {
         ...entry,
         project: projectName,
