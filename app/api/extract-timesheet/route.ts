@@ -527,7 +527,7 @@ function executePythonScript(extractionId: string, inputData: any, expectedResul
         .from("extraction_progress")
         .select("progress, is_processing")
         .eq("extraction_id", extractionId)
-        .single();
+        .maybeSingle();
 
       if (currentProgress?.is_processing && (currentProgress.progress || 0) < 75) {
         const newProgress = Math.min((currentProgress.progress || 30) + 3, 75);
