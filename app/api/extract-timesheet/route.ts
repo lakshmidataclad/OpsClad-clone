@@ -178,7 +178,7 @@ export async function POST(request: Request) {
       .from("gmail_settings")
       .select("gmail_email, gmail_password")
       .eq("user_id", userId)
-      .maybeSingle();
+      .single();
 
     if (gmailError || !gmailSettings) {
       return NextResponse.json(
@@ -399,61 +399,28 @@ async function processTimesheetExtraction(
       return;
     }
 
-    // --- HOLIDAY LOOKUP (load once) ---
-    const { data: holidayRows, error: holidayError } = await supabase
-      .from("holidays")
-      .select("holiday_date");
+    // Process extracted data to ensure proper structure
+    const processedData = extractedData.map((entry: any) => {
+      const emailKey = entry.sender_email?.toLowerCase();
+      const normalizedClient = entry.client?.toLowerCase().replace(" technology consulting llc", "").trim();
 
-    if (holidayError) {
-      console.error("Failed to load holidays:", holidayError);
-    }
+      // Get project info from mapping
+      let projectName = entry.project || "";
+      let requiredHours = 0;
 
-    // Convert holiday list to fast lookup set
-    const holidaySet = new Set(
-      (holidayRows || []).map((h) =>
-        new Date(h.holiday_date).toISOString().split("T")[0]
-      )
-    );
+      if (employeeProjectMap[emailKey] && employeeProjectMap[emailKey].projects[normalizedClient]) {
+        const projectInfo = employeeProjectMap[emailKey].projects[normalizedClient];
+        projectName = projectInfo.project;
+        requiredHours = projectInfo.required_hours || 0;
+      }
 
-    // --- PROCESS DATA WITH HOLIDAY OVERRIDE ---
-    const processedData = extractedData.map((entry: any) => {
-      const emailKey = entry.sender_email?.toLowerCase();
-      const normalizedClient = entry.client
-        ?.toLowerCase()
-        .replace(" technology consulting llc", "")
-        .trim();
-
-      // Pick project info
-      let projectName = entry.project || "";
-      let requiredHours = 0;
-
-      if (
-        employeeProjectMap[emailKey] &&
-        employeeProjectMap[emailKey].projects[normalizedClient]
-      ) {
-        const proj = employeeProjectMap[emailKey].projects[normalizedClient];
-        projectName = proj.project;
-        requiredHours = proj.required_hours || 0;
-      }
-
-      // Fix parsing MM/DD/YYYY correctly
-      const [mm, dd, yyyy] = entry.date.split("/");
-      const entryDateISO = `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
-
-      // Check holiday
-      const isHoliday = holidaySet.has(entryDateISO);
-
-      // Override activity
-      const finalActivity = isHoliday ? "HOLIDAY" : (entry.activity || "WORK");
-      
-      return {
-        ...entry,
-        project: projectName,
-        required_hours: requiredHours,
-        activity: finalActivity, // <-- HOLIDAY applied here
-      };
-    });
-
+      // Return properly structured entry
+      return {
+        ...entry,
+        project: projectName, // Only project name here
+        required_hours: requiredHours // Required hours in separate field
+      };
+    });
 
     await updateExtractionProgress(extractionId, {
       progress: 95,
@@ -530,7 +497,7 @@ function executePythonScript(extractionId: string, inputData: any, expectedResul
         .from("extraction_progress")
         .select("progress, is_processing")
         .eq("extraction_id", extractionId)
-        .maybeSingle();
+        .single();
 
       if (currentProgress?.is_processing && (currentProgress.progress || 0) < 75) {
         const newProgress = Math.min((currentProgress.progress || 30) + 3, 75);
