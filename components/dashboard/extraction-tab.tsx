@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import type React from "react"
 import type { TimesheetEntry, ExtractionStatus } from "@/lib/types"
@@ -35,15 +35,15 @@ export default function ExtractionTab() {
     sevenDaysAgo.setDate(today.getDate() - 7)
 
     return {
-      startDate: sevenDaysAgo.toISOString().split('T')[0],
-      endDate: today.toISOString().split('T')[0]
+      startDate: sevenDaysAgo.toISOString().split("T")[0],
+      endDate: today.toISOString().split("T")[0],
     }
   }
 
   const defaultDates = getDefaultDates()
 
-  const [startDate, setStartDate] = useState(defaultDates.startDate);
-  const [endDate, setEndDate] = useState(defaultDates.endDate);
+  const [startDate, setStartDate] = useState(defaultDates.startDate)
+  const [endDate, setEndDate] = useState(defaultDates.endDate)
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
   const isExtractingRef = useRef(false)
@@ -109,7 +109,7 @@ export default function ExtractionTab() {
     try {
       const gmailResponse = await fetch(`/api/gmail-settings?userId=${userId}`)
       const gmailData = await gmailResponse.json()
-      if(gmailData.success && gmailData.connected){
+      if (gmailData.success && gmailData.connected) {
         setGmailConnected(true)
         setGmailEmail(gmailData.email)
       }
@@ -129,15 +129,15 @@ export default function ExtractionTab() {
 
       const queryParams = new URLSearchParams({ userId })
       if (currentExtractionId) {
-        queryParams.append('extractionId', currentExtractionId)
+        queryParams.append("extractionId", currentExtractionId)
       }
 
       const response = await fetch(`/api/extract-timesheet?${queryParams}`, {
         method: "GET",
         headers: {
           "Cache-Control": "no-cache",
-          "Pragma": "no-cache"
-        }
+          Pragma: "no-cache",
+        },
       })
 
       if (!response.ok) {
@@ -162,11 +162,11 @@ export default function ExtractionTab() {
         setCurrentExtractionId(null)
         setExtractedData([])
         extractionStartTimeRef.current = null
-        setExtractionStatus(prev => ({
+        setExtractionStatus((prev) => ({
           ...prev,
           is_processing: false,
           progress: 0,
-          error: jsonResponse.error
+          error: jsonResponse.error,
         }))
 
         toast({
@@ -195,14 +195,16 @@ export default function ExtractionTab() {
 
         console.log(`Progress: ${currentProgress}%, Message: ${jsonResponse.message}`)
 
-        setExtractionStatus(prev => ({
+        setExtractionStatus((prev) => ({
           ...prev,
           is_processing: true,
           progress: currentProgress,
-          message: jsonResponse.message || (isWithinGracePeriod ? "Starting extraction..." : "Processing..."),
+          message:
+            jsonResponse.message ||
+            (isWithinGracePeriod ? "Starting extraction..." : "Processing..."),
           error: null,
           status: jsonResponse.status,
-          result: jsonResponse.status?.result || prev.result
+          result: jsonResponse.status?.result || prev.result,
         }))
 
         return
@@ -213,14 +215,14 @@ export default function ExtractionTab() {
       if (jsonResponse.data && Array.isArray(jsonResponse.data) && jsonResponse.data.length > 0) {
         console.log(`🎉 Success! Found ${jsonResponse.data.length} entries`)
 
-        setExtractionStatus(prev => ({
+        setExtractionStatus((prev) => ({
           ...prev,
           progress: 100,
           message: "Extraction completed successfully!",
           is_processing: false,
           error: null,
           status: jsonResponse.status,
-          result: jsonResponse.status?.result || null
+          result: jsonResponse.status?.result || null,
         }))
 
         setExtractedData(jsonResponse.data as TimesheetEntry[])
@@ -229,7 +231,6 @@ export default function ExtractionTab() {
         extractionStartTimeRef.current = null
 
         const totalEntries = jsonResponse.status?.result?.total_entries || jsonResponse.data.length
-        const duplicatesSkipped = jsonResponse.status?.result?.duplicate_entries_skipped || 0
 
         toast({
           title: "Extraction complete",
@@ -241,14 +242,14 @@ export default function ExtractionTab() {
       if (!isWithinGracePeriod) {
         console.log("ℹ️ Processing complete but no new data found")
 
-        setExtractionStatus(prev => ({
+        setExtractionStatus((prev) => ({
           ...prev,
           progress: 100,
           message: "Extraction completed - no new data found",
           is_processing: false,
           error: null,
           status: jsonResponse.status,
-          result: jsonResponse.status?.result || null
+          result: jsonResponse.status?.result || null,
         }))
 
         setIsExtracting(false)
@@ -260,12 +261,12 @@ export default function ExtractionTab() {
 
         toast({
           title: "Extraction complete",
-          description: totalFound > 0
-            ? `Found ${totalFound} entries, but all ${duplicatesSkipped} entries are already stored in database and can be accessed through reports.`
-            : "No timesheet entries found in the specified date range.",
+          description:
+            totalFound > 0
+              ? `Found ${totalFound} entries, but all ${duplicatesSkipped} entries are already stored in database and can be accessed through reports.`
+              : "No timesheet entries found in the specified date range.",
         })
       }
-
     } catch (error) {
       console.error(`❌ Status check #${statusCheckCountRef.current} error:`, error)
 
@@ -279,17 +280,29 @@ export default function ExtractionTab() {
 
   const handleExtractTimesheets = async () => {
     if (!currentUser) {
-      toast({ title: "Authentication required", description: "Please log in to start an extraction.", variant: "destructive" })
+      toast({
+        title: "Authentication required",
+        description: "Please log in to start an extraction.",
+        variant: "destructive",
+      })
       return
     }
 
     if (!gmailConnected) {
-      toast({ title: "Gmail Not Connected", description: "Please connect your Gmail account in the Settings tab.", variant: "destructive" })
+      toast({
+        title: "Gmail Not Connected",
+        description: "Please connect your Gmail account in the Settings tab.",
+        variant: "destructive",
+      })
       return
     }
 
     if (!csvUploaded) {
-      toast({ title: "CSV Data Missing", description: "Please upload your Employee and Project CSV files first.", variant: "destructive" })
+      toast({
+        title: "CSV Data Missing",
+        description: "Please upload your Employee and Project CSV files first.",
+        variant: "destructive",
+      })
       return
     }
 
@@ -312,7 +325,7 @@ export default function ExtractionTab() {
           userId: currentUser.user_id,
           start_date: startDate,
           end_date: endDate,
-          extracted_by: currentUser.username || currentUser.email || 'Manager'
+          extracted_by: currentUser.username || currentUser.email || "Manager",
         }),
       })
 
@@ -356,8 +369,18 @@ export default function ExtractionTab() {
       })
       return
     }
-    
-    const headers = ["Employee ID", "Employee Name", "Client", "Project", "Date", "Day", "Activity", "Hours", "Required Hours"]
+
+    const headers = [
+      "Employee ID",
+      "Employee Name",
+      "Client",
+      "Project",
+      "Date",
+      "Day",
+      "Activity",
+      "Hours",
+      "Required Hours",
+    ]
     let csvContent = headers.join(",") + "\n"
 
     extractedData.forEach((entry) => {
@@ -379,7 +402,10 @@ export default function ExtractionTab() {
     const link = document.createElement("a")
     const url = URL.createObjectURL(blob)
     link.setAttribute("href", url)
-    link.setAttribute("download", `extracted_timesheets_${new Date().toISOString().split('T')[0]}.csv`)
+    link.setAttribute(
+      "download",
+      `extracted_timesheets_${new Date().toISOString().split("T")[0]}.csv`
+    )
     link.style.visibility = "hidden"
     document.body.appendChild(link)
     link.click()
@@ -392,13 +418,17 @@ export default function ExtractionTab() {
   return (
     <div className="p-6 space-y-6">
       <h2 className="text-2xl font-bold text-white mb-2">Timesheet Extraction</h2>
-      
+
       {/* Prerequisites Status */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="bg-gray-950 border-gray-800">
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
-              <div className={`w-3 h-3 rounded-full ${gmailConnected ? "bg-green-200" : "bg-red-500"}`}></div>
+              <div
+                className={`w-3 h-3 rounded-full ${
+                  gmailConnected ? "bg-green-200" : "bg-red-500"
+                }`}
+              ></div>
               <div className="flex-1">
                 <h3 className="font-medium text-white">Gmail Connection</h3>
                 {gmailConnected ? (
@@ -420,7 +450,11 @@ export default function ExtractionTab() {
         <Card className="bg-gray-950 border-gray-800">
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
-              <div className={`w-3 h-3 rounded-full ${csvUploaded ? "bg-green-200" : "bg-red-500"}`}></div>
+              <div
+                className={`w-3 h-3 rounded-full ${
+                  csvUploaded ? "bg-green-200" : "bg-red-500"
+                }`}
+              ></div>
               <div className="flex-1">
                 <h3 className="font-medium text-white">Employee Database</h3>
                 {csvUploaded ? (
@@ -493,7 +527,7 @@ export default function ExtractionTab() {
             <Button
               onClick={handleExtractTimesheets}
               disabled={!requirementsMet || isExtracting}
-              variant= "outline"
+              variant="outline"
               className="bg-white border-red-600 text-red-600 hover:bg-red-500 px-8 py-3 text-base font-semibold"
               size="lg"
             >
@@ -513,16 +547,18 @@ export default function ExtractionTab() {
           {/* Progress Indicator */}
           {isExtracting && (
             <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-red-500 font-bold">{extractionStatus.progress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 border-gray-200 rounded-full h-3">
-                    <div 
-                      className="bg-red-500 h-3 rounded-full transition-all duration-500 ease-out" 
-                      style={{ width: `${extractionStatus.progress}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-black">{extractionStatus.message}</p>
+              <div className="flex justify-between items-center">
+                <span className="text-red-500 font-bold">
+                  {extractionStatus.progress}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 border-gray-200 rounded-full h-3">
+                <div
+                  className="bg-red-500 h-3 rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${extractionStatus.progress}%` }}
+                ></div>
+              </div>
+              <p className="text-black">{extractionStatus.message}</p>
             </div>
           )}
         </CardContent>
@@ -533,13 +569,11 @@ export default function ExtractionTab() {
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-black">
-                Extracted Timesheets
-              </CardTitle>
+              <CardTitle className="text-black">Extracted Timesheets</CardTitle>
               <p className="text-gray-600 mt-1">{extractedData.length} entries found</p>
             </div>
-            <Button 
-              onClick={handleDownloadCSV} 
+            <Button
+              onClick={handleDownloadCSV}
               className="bg-orange-600 hover:bg-orange-700 text-white"
             >
               <Download className="h-4 w-4 mr-2" />
@@ -559,19 +593,38 @@ export default function ExtractionTab() {
                     <th className="border-b px-4 py-2 text-left text-black">Day</th>
                     <th className="border-b px-4 py-2 text-left text-black">Activity</th>
                     <th className="border-b px-4 py-2 text-left text-black">Hours</th>
-                    <th className="border-b px-4 py-2 text-left text-black">Required Hours</th>
+                    <th className="border-b px-4 py-2 text-left text-black">
+                      Required Hours
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {extractedData.map((entry, index) => (
-                    <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                      <td className="border-b px-4 py-2 text-black">{entry.employee_id || "N/A"}</td>
-                      <td className="border-b px-4 py-2 text-black">{entry.employee_name || "N/A"}</td>
-                      <td className="border-b px-4 py-2 text-black">{entry.client || "N/A"}</td>
-                      <td className="border-b px-4 py-2 text-black">{entry.project || "N/A"}</td>
-                      <td className="border-b px-4 py-2 text-black">{entry.date || "N/A"}</td>
-                      <td className="border-b px-4 py-2 text-black">{entry.day || "N/A"}</td>
-                      <td className="border-b px-4 py-2 text-black">{entry.activity || "N/A"}</td>
+                    <tr
+                      key={index}
+                      className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                    >
+                      <td className="border-b px-4 py-2 text-black">
+                        {entry.employee_id || "N/A"}
+                      </td>
+                      <td className="border-b px-4 py-2 text-black">
+                        {entry.employee_name || "N/A"}
+                      </td>
+                      <td className="border-b px-4 py-2 text-black">
+                        {entry.client || "N/A"}
+                      </td>
+                      <td className="border-b px-4 py-2 text-black">
+                        {entry.project || "N/A"}
+                      </td>
+                      <td className="border-b px-4 py-2 text-black">
+                        {entry.date || "N/A"}
+                      </td>
+                      <td className="border-b px-4 py-2 text-black">
+                        {entry.day || "N/A"}
+                      </td>
+                      <td className="border-b px-4 py-2 text-black">
+                        {entry.activity || "N/A"}
+                      </td>
                       <td
                         className={`border-b px-4 py-2 text-black ${
                           entry.hours < entry.required_hours
@@ -584,7 +637,9 @@ export default function ExtractionTab() {
                         {entry.hours !== undefined ? entry.hours : "N/A"}
                       </td>
                       <td className="border-b px-4 py-2 text-black">
-                        {entry.required_hours !== undefined ? entry.required_hours : "N/A"}
+                        {entry.required_hours !== undefined
+                          ? entry.required_hours
+                          : "N/A"}
                       </td>
                     </tr>
                   ))}
@@ -600,7 +655,9 @@ export default function ExtractionTab() {
         <Alert variant="destructive" className="bg-red-900/20 border-red-800">
           <AlertCircle className="h-4 w-4 text-red-400" />
           <AlertTitle className="text-red-300">Extraction Failed</AlertTitle>
-          <AlertDescription className="text-red-200">{extractionStatus.error}</AlertDescription>
+          <AlertDescription className="text-red-200">
+            {extractionStatus.error}
+          </AlertDescription>
         </Alert>
       )}
     </div>
