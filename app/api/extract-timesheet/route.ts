@@ -437,7 +437,8 @@ async function processTimesheetExtraction(
       }
 
       // --- HOLIDAY CHECK ---
-      const entryDateISO = new Date(entry.date).toISOString().split("T")[0];
+      const [mm, dd, yyyy] = entry.date.split("/");
+      const entryDateISO = `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;      
       const isHoliday = holidaySet.has(entryDateISO);
 
       // Override activity if holiday
