@@ -399,28 +399,49 @@ async function processTimesheetExtraction(
       return;
     }
 
-    // Process extracted data to ensure proper structure
-    const processedData = extractedData.map((entry: any) => {
-      const emailKey = entry.sender_email?.toLowerCase();
-      const normalizedClient = entry.client?.toLowerCase().replace(" technology consulting llc", "").trim();
+    // Fetch holidays from DB
+    const { data: holidayRows, error: holidayError } = await supabase
+      .from("holidays")
+      .select("holiday_date");
 
-      // Get project info from mapping
-      let projectName = entry.project || "";
-      let requiredHours = 0;
+    if (holidayError) {
+      console.error("Holiday fetch error:", holidayError);
+    }
 
-      if (employeeProjectMap[emailKey] && employeeProjectMap[emailKey].projects[normalizedClient]) {
-        const projectInfo = employeeProjectMap[emailKey].projects[normalizedClient];
-        projectName = projectInfo.project;
-        requiredHours = projectInfo.required_hours || 0;
-      }
+    // Build a fast lookup Set for holiday dates
+    const holidaySet = new Set(
+      (holidayRows || []).map(h => new Date(h.holiday_date).toISOString().split("T")[0])
+    );
 
-      // Return properly structured entry
-      return {
-        ...entry,
-        project: projectName, // Only project name here
-        required_hours: requiredHours // Required hours in separate field
-      };
-    });
+    const processedData = extractedData.map((entry: any) => {
+      const emailKey = entry.sender_email?.toLowerCase();
+      const normalizedClient = entry.client?.toLowerCase().replace(" technology consulting llc", "").trim();
+
+      let projectName = entry.project || "";
+      let requiredHours = 0;
+
+      if (employeeProjectMap[emailKey] && employeeProjectMap[emailKey].projects[normalizedClient]) {
+        const projectInfo = employeeProjectMap[emailKey].projects[normalizedClient];
+        projectName = projectInfo.project;
+        requiredHours = projectInfo.required_hours || 0;
+      }
+
+      // ---- HOLIDAY OVERRIDE ----
+      const entryDate = new Date(entry.date).toISOString().split("T")[0];
+      const isHoliday = holidaySet.has(entryDate);
+
+      const activity = isHoliday ? "HOLIDAY" : entry.activity;
+
+      // For holidays — you can set requiredHours = 0 or 8 depending on your policy
+      const finalRequiredHours = isHoliday ? 0 : requiredHours;
+
+      return {
+        ...entry,
+        project: projectName,
+        required_hours: finalRequiredHours,
+        activity: activity
+      };
+    });
 
     await updateExtractionProgress(extractionId, {
       progress: 95,
