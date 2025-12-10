@@ -432,7 +432,6 @@ async function processTimesheetExtraction(
     const { error: insertError, data: insertedData } = await supabase
       .from("timesheets")
       .upsert(processedData, {
-        onConflict: 'date,sender_email,project,client',
         ignoreDuplicates: false
       })
       .select();
