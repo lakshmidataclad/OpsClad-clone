@@ -431,9 +431,7 @@ async function processTimesheetExtraction(
     // Insert data using upsert - PostgreSQL will handle duplicates automatically
     const { error: insertError, data: insertedData } = await supabase
       .from("timesheets")
-      .upsert(processedData, {
-        ignoreDuplicates: false
-      })
+      .upsert(processedData)
       .select();
 
     if (insertError) {
