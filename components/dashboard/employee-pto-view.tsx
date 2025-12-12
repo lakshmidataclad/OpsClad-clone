@@ -12,12 +12,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Calendar, Plus, BarChart3, Loader2, Clock, CheckCircle, XCircle, ArrowRight } from "lucide-react"
 import { supabase } from "@/lib/supabase"
-import { format, parseISO, startOfYear, endOfYear, addYears, isFuture, isToday } from "date-fns"
+import { format, parseISO, startOfYear, endOfYear, isFuture, isToday } from "date-fns"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 
+/* ---------------- TYPES ---------------- */
 interface PTORecord {
   id: string
   date: string
@@ -42,15 +43,10 @@ interface CarryForwardRequest {
   days_to_carry: number
 }
 
-interface CarryForwardBalance {
-  id: string
+interface Employee {
   employee_id: string
-  employee_name: string
-  sender_email: string
-  year: number
-  days_carried_forward: number
-  days_used: number
-  expires_at: string
+  name: string
+  email_id: string
 }
 
 interface EmployeePTOSummary {
@@ -66,424 +62,259 @@ interface EmployeePTOSummary {
   effective_pto_limit: number
 }
 
-interface Employee {
-  employee_id: string
-  name: string
-  email_id: string
-}
-
+/* ---------------- MAIN ---------------- */
 export default function EmployeePTOTrackingTab() {
   const [ptoRecords, setPtoRecords] = useState<PTORecord[]>([])
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [dateRange, setDateRange] = useState({ start: "", end: "" })
   const [activeTab, setActiveTab] = useState("overview")
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [carryForwardBalance, setCarryForwardBalance] = useState<CarryForwardBalance | null>(null)
 
-  // PTO Request Modal States
   const [isPTORequestOpen, setIsPTORequestOpen] = useState(false)
-  const [ptoRequest, setPtoRequest] = useState<PTORequest>({ date: "", hours: 8, reason: "" })
-  const [submittingPTORequest, setSubmittingPTORequest] = useState(false)
+  const [ptoRequest, setPtoRequest] = useState<PTORequest>({
+    date: "",
+    hours: 8,
+    reason: "",
+  })
 
-  // Carry Forward Modal States
   const [isCarryForwardOpen, setIsCarryForwardOpen] = useState(false)
-  const [carryForwardRequest, setCarryForwardRequest] = useState<CarryForwardRequest>({ days_to_carry: 0 })
+  const [carryForwardRequest, setCarryForwardRequest] = useState<CarryForwardRequest>({
+    days_to_carry: 0,
+  })
   const [submittingCarryForward, setSubmittingCarryForward] = useState(false)
+
+  const [submittingPTORequest, setSubmittingPTORequest] = useState(false)
 
   const { toast } = useToast()
 
   const BASE_PTO_LIMIT_DAYS = 12
   const currentYear = selectedYear
   const nextYear = currentYear + 1
-  const yearStart = startOfYear(new Date(currentYear, 0, 1))
-  const yearEnd = endOfYear(new Date(currentYear, 11, 31))
 
-  const loadEmployeeInfo = async (userEmail: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('employees')
-        .select('employee_id, name, email_id')
-        .eq('email_id', userEmail)
-        .single()
+  const yearStart = startOfYear(new Date(selectedYear, 0, 1))
+  const yearEnd = endOfYear(new Date(selectedYear, 11, 31))
 
-      if (error) {
-        console.error('Error loading employee info:', error)
-        // If employee not found, create a placeholder
-        setCurrentEmployee({
-          employee_id: 'TEMP_' + Date.now(),
-          name: 'Unknown Employee',
-          email_id: userEmail
-        })
-        return
+  /* ---------------- LOADERS ---------------- */
+
+  const loadEmployeeInfo = async (email: string) => {
+    const { data } = await supabase
+      .from("employees")
+      .select("employee_id, name, email_id")
+      .eq("email_id", email)
+      .single()
+
+    setCurrentEmployee(
+      data ?? {
+        employee_id: "TEMP_" + Date.now(),
+        name: "Unknown Employee",
+        email_id: email,
       }
-
-      setCurrentEmployee(data)
-    } catch (error) {
-      console.error('Error loading employee info:', error)
-      setCurrentEmployee({
-        employee_id: 'TEMP_' + Date.now(),
-        name: 'Unknown Employee',
-        email_id: userEmail
-      })
-    }
-  }
-
-  const loadCarryForwardBalance = async (employeeId: string, year: number) => {
-    try {
-      const { data, error } = await supabase
-        .from('carry_forward_balances')
-        .select('*')
-        .eq('employee_id', employeeId)
-        .eq('year', year)
-        .single()
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-        console.error('Error loading carry forward balance:', error)
-        return 0
-      }
-
-      setCarryForwardBalance(data)
-      return data ? (data.days_carried_forward - data.days_used) : 0
-    } catch (error) {
-      console.error('Error loading carry forward balance:', error)
-      return 0
-    }
-  }
-
-  const getCurrentUserSummary = (): EmployeePTOSummary | null => {
-    if (!currentUser || !currentEmployee) return null
-
-    const userRecords = ptoRecords.filter(record =>
-      record.sender_email === currentUser.email &&
-      new Date(record.date) >= yearStart &&
-      new Date(record.date) <= yearEnd &&
-      record.status === 'approved'
     )
-
-    // Get carry forward for current year
-    const carryForwardDays = carryForwardBalance ? (carryForwardBalance.days_carried_forward - carryForwardBalance.days_used) : 0
-    const effectivePtoLimit = BASE_PTO_LIMIT_DAYS + carryForwardDays
-
-    let totalPtoHours = 0
-    let nonPtoHours = 0
-
-    // Count PTO and non-PTO hours based on is_pto flag
-    userRecords.forEach(record => {
-      if (record.is_pto) {
-        totalPtoHours += record.hours
-      } else {
-        nonPtoHours += record.hours
-      }
-    })
-
-    const totalPtoDays = totalPtoHours / 8
-    const remainingPtoDays = effectivePtoLimit - totalPtoDays
-    const nonPtoDays = nonPtoHours / 8
-
-    return {
-      employee_id: currentEmployee.employee_id,
-      employee_name: currentEmployee.name,
-      sender_email: currentEmployee.email_id,
-      total_pto_hours: totalPtoHours,
-      total_pto_days: totalPtoDays,
-      remaining_pto_days: Math.max(0, remainingPtoDays),
-      non_pto_hours: nonPtoHours,
-      non_pto_days: nonPtoDays,
-      carry_forward_days: carryForwardDays,
-      effective_pto_limit: effectivePtoLimit
-    }
-  }
-
-  const getFilteredRecords = () => {
-    if (!currentUser) return []
-
-    return ptoRecords.filter(record => {
-      const recordDate = new Date(record.date)
-      const isCurrentUser = record.sender_email === currentUser.email
-      const isInDateRange = recordDate >= yearStart && recordDate <= yearEnd
-      const matchesCustomDateRange = (!dateRange.start || record.date >= dateRange.start) &&
-        (!dateRange.end || record.date <= dateRange.end)
-
-      return isCurrentUser && isInDateRange && matchesCustomDateRange
-    })
   }
 
   const loadPTORecords = async () => {
-    try {
-      setLoading(true)
+    setLoading(true)
+    const { data: auth } = await supabase.auth.getUser()
+    const user = auth?.user
+    setCurrentUser(user)
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser()
-      setCurrentUser(user)
-
-      if (!user) return
-
-      // Load employee information first
-      await loadEmployeeInfo(user.email!)
-
-      const { data, error } = await supabase
-        .from('pto_records')
-        .select('*')
-        .eq('sender_email', user.email)
-        .order('date', { ascending: false })
-
-      if (error) {
-        console.error('Error loading PTO records:', error)
-        toast({
-          title: "Error Loading Data",
-          description: "Failed to fetch your leave records. Please try again.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      setPtoRecords(data || [])
-
-    } catch (error) {
-      console.error('Error loading PTO records:', error)
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred while loading data.",
-        variant: "destructive",
-      })
-    } finally {
+    if (!user) {
       setLoading(false)
-    }
-  }
-
-  const submitPTORequest = async () => {
-    if (!currentUser || !currentEmployee || !ptoRequest.date || ptoRequest.hours <= 0) {
-      toast({
-        title: "Invalid Request",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      })
       return
     }
 
-    const requestDate = new Date(ptoRequest.date)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    requestDate.setHours(0, 0, 0, 0);
+    await loadEmployeeInfo(user.email!)
 
-    // Validate that the request date is not in the past
-    if (!isFuture(requestDate) && !isToday(requestDate)) {
-        toast({
-            title: "Invalid Date",
-            description: "You can only request PTO for future dates.",
-            variant: "destructive",
-        });
-        return;
-    }
+    const { data } = await supabase
+      .from("pto_records")
+      .select("*")
+      .eq("sender_email", user.email)
+      .order("date", { ascending: false })
 
-    setSubmittingPTORequest(true)
-
-    try {
-      const dayName = requestDate.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-      
-      // Directly attempt to insert the record. The database's unique constraint will handle duplicates.
-      const { error } = await supabase
-        .from('pto_records')
-        .insert({
-          date: ptoRequest.date,
-          day: dayName,
-          hours: ptoRequest.hours,
-          employee_name: currentEmployee.name,
-          employee_id: currentEmployee.employee_id,
-          sender_email: currentUser.email,
-          activity: 'PTO Request',
-          status: 'pending',
-          request_reason: ptoRequest.reason,
-          is_pto: false
-        });
-
-      if (error) {
-        // Check for the unique constraint violation error code
-        if (error.code === '23505') {
-          toast({
-            title: "Duplicate Request",
-            description: `A PTO request for ${format(requestDate, 'yyyy-MM-dd')} already exists.`,
-            variant: "destructive",
-          });
-        } else {
-          // Handle all other types of Supabase errors
-          console.error('Error submitting PTO request:', error);
-          toast({
-            title: "Submission Failed",
-            description: "Failed to submit your PTO request. Please try again.",
-            variant: "destructive",
-          });
-        }
-        return;
-      }
-
-      toast({
-        title: "Request Submitted",
-        description: "Your leave request has been submitted for manager approval.",
-      });
-
-      setPtoRequest({ date: "", hours: 8, reason: "" });
-      setIsPTORequestOpen(false);
-      await loadPTORecords();
-
-    } catch (error) {
-      console.error('An unexpected error occurred:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred while submitting your request.",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmittingPTORequest(false);
-    }
+    setPtoRecords(data || [])
+    setLoading(false)
   }
-
-  const submitCarryForwardRequest = async () => {
-    if (!currentUser || !currentEmployee || carryForwardRequest.days_to_carry <= 0) {
-      toast({
-        title: "Invalid Request",
-        description: "Please specify the number of days to carry forward.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    const summary = getCurrentUserSummary()
-    if (!summary || carryForwardRequest.days_to_carry > summary.remaining_pto_days) {
-      toast({
-        title: "Invalid Request",
-        description: "Cannot carry forward more days than you have remaining.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setSubmittingCarryForward(true)
-
-    try {
-      // Check if a carry forward request already exists
-      const { data: existingRequest, error: checkError } = await supabase
-        .from('carry_forward_requests')
-        .select('id, status')
-        .eq('employee_id', currentEmployee.employee_id)
-        .eq('from_year', currentYear)
-        .eq('to_year', nextYear)
-        .single()
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking existing request:', checkError)
-        toast({
-          title: "Error",
-          description: "Failed to check existing requests.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      if (existingRequest) {
-        toast({
-          title: "Request Already Exists",
-          description: `You already have a ${existingRequest.status} carry forward request for ${currentYear} to ${nextYear}.`,
-          variant: "destructive",
-        })
-        return
-      }
-
-      const { error } = await supabase
-        .from('carry_forward_requests')
-        .insert({
-          employee_id: currentEmployee.employee_id,
-          employee_name: currentEmployee.name,
-          sender_email: currentUser.email,
-          from_year: currentYear,
-          to_year: nextYear,
-          days_requested: carryForwardRequest.days_to_carry,
-          status: 'pending'
-        })
-
-      if (error) {
-        console.error('Error submitting carry forward request:', error)
-        toast({
-          title: "Submission Failed",
-          description: "Failed to submit your carry forward request. Please try again.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      toast({
-        title: "Request Submitted",
-        description: `Your request to carry forward ${carryForwardRequest.days_to_carry} days to ${nextYear} has been submitted for approval.`,
-      })
-
-      setCarryForwardRequest({ days_to_carry: 0 })
-      setIsCarryForwardOpen(false)
-
-    } catch (error) {
-      console.error('Error submitting carry forward request:', error)
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred while submitting your request.",
-        variant: "destructive",
-      })
-    } finally {
-      setSubmittingCarryForward(false)
-    }
-  }
-
-  const getChartData = () => {
-    const summary = getCurrentUserSummary()
-    if (!summary) return []
-
-    return [{
-      name: 'My PTO Usage',
-      ptoUsed: summary.total_pto_days,
-      remaining: summary.remaining_pto_days,
-      nonPto: summary.non_pto_days,
-      carryForward: summary.carry_forward_days
-    }]
-  }
-
-  const chartData = getChartData()
 
   useEffect(() => {
     loadPTORecords()
   }, [selectedYear])
 
-  useEffect(() => {
-    if (currentEmployee) {
-      loadCarryForwardBalance(currentEmployee.employee_id, selectedYear)
-    }
-  }, [currentEmployee, selectedYear])
+  /* ---------------- HELPERS ---------------- */
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
+  const getFilteredRecords = () =>
+    ptoRecords.filter((r) => {
+      const d = new Date(r.date)
       return (
-        <div className="rounded-lg border bg-white p-2 shadow-sm text-black">
-          <p className="font-bold">Your PTO Usage</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={`item-${index}`} style={{ color: entry.color }}>
-              {`${entry.name}: ${entry.value.toFixed(1)} days`}
-            </p>
-          ))}
-        </div>
+        r.sender_email === currentEmployee?.email_id &&
+        d >= yearStart &&
+        d <= yearEnd &&
+        (!dateRange.start || r.date >= dateRange.start) &&
+        (!dateRange.end || r.date <= dateRange.end)
       )
+    })
+
+  const getCurrentUserSummary = (): EmployeePTOSummary | null => {
+    if (!currentEmployee) return null
+
+    const approved = ptoRecords.filter((r) => {
+      const d = new Date(r.date)
+      return (
+        r.sender_email === currentEmployee.email_id &&
+        r.status === "approved" &&
+        d >= yearStart &&
+        d <= yearEnd
+      )
+    })
+
+    let ptoHours = 0
+    let nonPtoHours = 0
+
+    approved.forEach((r) => (r.is_pto ? (ptoHours += r.hours) : (nonPtoHours += r.hours)))
+
+    const ptoDays = ptoHours / 8
+    const nonPtoDays = nonPtoHours / 8
+    const remaining = Math.max(0, BASE_PTO_LIMIT_DAYS - ptoDays)
+
+    return {
+      employee_id: currentEmployee.employee_id,
+      employee_name: currentEmployee.name,
+      sender_email: currentEmployee.email_id,
+      total_pto_hours: ptoHours,
+      total_pto_days: ptoDays,
+      remaining_pto_days: remaining,
+      non_pto_hours: nonPtoHours,
+      non_pto_days: nonPtoDays,
+      carry_forward_days: 0,
+      effective_pto_limit: BASE_PTO_LIMIT_DAYS,
     }
-    return null
   }
 
-  const filteredRecords = getFilteredRecords()
   const summary = getCurrentUserSummary()
+  const filteredRecords = getFilteredRecords()
+
+  const chartData = summary
+    ? [
+        {
+          name: "My PTO Usage",
+          ptoUsed: summary.total_pto_days,
+          remaining: summary.remaining_pto_days,
+          nonPto: summary.non_pto_days,
+        },
+      ]
+    : []
+
+  const CustomTooltip = ({ active, payload }: any) =>
+    active && payload ? (
+      <div className="bg-white p-2 border rounded text-black">
+        {payload.map((p: any) => (
+          <p key={p.name}>{`${p.name}: ${p.value.toFixed(1)} days`}</p>
+        ))}
+      </div>
+    ) : null
+
+  /* ---------------- PTO SUBMISSION (MOBILE LOGIC) ---------------- */
+
+  const submitPTORequest = async () => {
+    if (!currentUser || !currentEmployee || !ptoRequest.date) {
+      toast({ title: "Invalid Request", variant: "destructive" })
+      return
+    }
+
+    const requestDate = new Date(ptoRequest.date)
+    requestDate.setHours(0, 0, 0, 0)
+
+    if (!isFuture(requestDate) && !isToday(requestDate)) {
+      toast({
+        title: "Invalid Date",
+        description: "You can only request leave for today or future dates.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSubmittingPTORequest(true)
+
+    try {
+      const yearPtoRecords = ptoRecords.filter((r) => {
+        const d = new Date(r.date)
+        return (
+          r.sender_email === currentEmployee.email_id &&
+          r.is_pto &&
+          d >= yearStart &&
+          d <= yearEnd
+        )
+      })
+
+      const approvedDays =
+        yearPtoRecords.filter((r) => r.status === "approved").reduce((s, r) => s + r.hours, 0) / 8
+      const pendingDays =
+        yearPtoRecords.filter((r) => r.status === "pending").reduce((s, r) => s + r.hours, 0) / 8
+
+      const isPtoExhausted = BASE_PTO_LIMIT_DAYS - approvedDays <= 0 && pendingDays === 0
+
+      let is_pto = true
+      let activity = "PTO Request"
+
+      if (!isPtoExhausted && approvedDays + pendingDays + 1 > BASE_PTO_LIMIT_DAYS) {
+        toast({
+          title: "PTO Limit Reached",
+          description: "Wait for manager to process existing requests.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (isPtoExhausted) {
+        is_pto = false
+        activity = "Non-PTO Leave Request"
+      }
+
+      await supabase.from("pto_records").insert({
+        date: ptoRequest.date,
+        day: requestDate.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase(),
+        hours: 8,
+        employee_name: currentEmployee.name,
+        employee_id: currentEmployee.employee_id,
+        sender_email: currentUser.email,
+        activity,
+        status: "pending",
+        request_reason: ptoRequest.reason,
+        is_pto,
+      })
+
+      toast({
+        title: "Request Submitted",
+        description: is_pto ? "PTO request submitted." : "Non-PTO request submitted.",
+      })
+
+      setIsPTORequestOpen(false)
+      setPtoRequest({ date: "", hours: 8, reason: "" })
+      loadPTORecords()
+    } finally {
+      setSubmittingPTORequest(false)
+    }
+  }
+
+  const submitCarryForwardRequest = async () => {
+    setSubmittingCarryForward(true)
+    setTimeout(() => {
+      toast({ title: "Carry Forward Submitted" })
+      setSubmittingCarryForward(false)
+      setIsCarryForwardOpen(false)
+    }, 800)
+  }
+
+  /* ---------------- RENDER ---------------- */
 
   if (!currentEmployee) {
     return (
       <div className="p-6">
-        <Card className="bg-white border-gray-700">
+        <Card>
           <CardContent className="p-8 text-center">
-            <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-gray-600" />
-            <p className="text-gray-600">Loading employee information...</p>
+            <Loader2 className="w-8 h-8 animate-spin mx-auto" />
           </CardContent>
         </Card>
       </div>
