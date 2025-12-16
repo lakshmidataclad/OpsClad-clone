@@ -38,59 +38,26 @@ export default function ReportsTab() {
   const loadCombinedData = async () => {
     setIsLoading(true)
     try {
-
-      // Fetch holidays
-      const { data: holidayData, error: holidayError } = await supabase
-        .from("holidays")
-        .select("holiday_date");
-
-      if (holidayError) {
-        console.error("Holiday data error:", holidayError)
-      }
-
-      // Transform holidays into timesheet-like entries (applies to all employees)
-      const transformedHolidayData = (holidayData || []).flatMap(holiday =>
-        (timesheetData || []).map(ts => ({
-          id: `holiday_${holiday.holiday_date}_${ts.employee_id}`,
-          employee_id: ts.employee_id,
-          employee_name: ts.employee_name,
-          sender_email: ts.sender_email,
-          date: holiday.holiday_date,
-          day: new Date(holiday.holiday_date).toLocaleDateString("en-US", { weekday: "short" }).toUpperCase(),
-          hours: 8,
-          activity: "HOLIDAY",
-          client: "",
-          project: "",
-          required_hours: 8,
-          created_at: null,
-          updated_at: null
-        }))
-      )
-
-
-
-      // Fetch timesheet data (excluding PTO entries)
+      // 1️⃣ Fetch ALL timesheets (PTO included)
       const { data: timesheetData, error: timesheetError } = await supabase
         .from("timesheets")
         .select("*")
-        .neq("activity", "pto") // Exclude PTO entries
-        .neq("activity", "PTO") // Exclude PTO entries (case variations)
 
       if (timesheetError) {
         console.error("Timesheet data error:", timesheetError)
       }
 
-      // Fetch PTO records
+      // 2️⃣ Fetch PTO records (fallback only)
       const { data: ptoData, error: ptoError } = await supabase
         .from("pto_records")
         .select("*")
-        .eq("is_pto", true);
+        .eq("is_pto", true)
 
       if (ptoError) {
         console.error("PTO data error:", ptoError)
       }
 
-      // Transform PTO data to match timesheet structure
+      // 3️⃣ Transform PTO records into timesheet-like rows
       const transformedPtoData = (ptoData || []).map(pto => ({
         id: pto.id,
         employee_id: pto.employee_id,
@@ -99,43 +66,37 @@ export default function ReportsTab() {
         date: pto.date,
         day: pto.day,
         hours: pto.hours,
-        activity: "PTO", // Set activity as "PTO"
-        client: "", // Leave client blank for PTO
-        project: "", // Leave project blank for PTO
-        required_hours: "", // Standard workday
+        activity: "PTO",
+        client: "",
+        project: "",
+        required_hours: "",
         created_at: pto.created_at,
-        updated_at: pto.updated_at
+        updated_at: pto.updated_at,
       }))
 
-      // Build a lookup of existing timesheets (employee_id + date)
+      // 4️⃣ Build lookup for existing timesheets (employee + date)
       const timesheetKeySet = new Set(
         (timesheetData || []).map(
           t => `${t.employee_id}_${t.date}`
         )
       )
 
-      // Only include holidays if NO timesheet exists for the same employee + date
-      const filteredHolidayData = transformedHolidayData.filter(
-        h => !timesheetKeySet.has(`${h.employee_id}_${h.date}`)
-      )
-
-      // Only include PTO records if NO timesheet exists for the same employee + date
+      // 5️⃣ Only include PTO records if NO timesheet exists for same employee + date
       const filteredPtoData = transformedPtoData.filter(
         pto => !timesheetKeySet.has(`${pto.employee_id}_${pto.date}`)
       )
 
+      // 6️⃣ Combine (timesheets always win)
       const combined = [
         ...(timesheetData || []),
         ...filteredPtoData,
-        ...filteredHolidayData
       ]
 
-      
-      // Sort by date (most recent first)
+      // 7️⃣ Sort by date (latest first)
       combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
       setCombinedData(combined)
-      
+
       if (combined.length === 0) {
         toast({
           title: "No Data Found",
@@ -144,10 +105,10 @@ export default function ReportsTab() {
         })
       }
     } catch (error) {
-      console.error("Error loading combined data:", error)
+      console.error("Error loading data:", error)
       toast({
         title: "Data loading error",
-        description: "An error occurred while loading timesheet and PTO data.",
+        description: "An error occurred while loading timesheet data.",
         variant: "destructive",
       })
     } finally {
