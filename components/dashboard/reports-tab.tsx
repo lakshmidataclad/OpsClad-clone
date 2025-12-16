@@ -597,7 +597,9 @@ export default function ReportsTab() {
                         <td className="border-b px-4 py-2 text-black">
                           {entry.project || "-"}
                         </td>
-                        <td className="border-b px-4 py-2 text-black">{entry.date || "N/A"}</td>
+                        <td className="border-b px-4 py-2 text-black whitespace-nowrap">
+                          {entry.date}
+                        </td>                   
                         <td className="border-b px-4 py-2 text-black">{entry.day || "N/A"}</td>
                         <td className="border-b px-4 py-2 text-black">{entry.activity || "N/A"}</td>
                         <td

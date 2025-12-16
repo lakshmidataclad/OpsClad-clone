@@ -34,7 +34,8 @@ interface PTORecord {
 }
 
 interface PTORequest {
-  date: string
+  start_date: string
+  end_date: string
   hours: number
   reason: string
 }
@@ -75,7 +76,8 @@ export default function EmployeePTOTrackingTab() {
 
   const [isPTORequestOpen, setIsPTORequestOpen] = useState(false)
   const [ptoRequest, setPtoRequest] = useState<PTORequest>({
-    date: "",
+    start_date: "",
+    end_date: "",
     hours: 8,
     reason: "",
   })
@@ -143,6 +145,19 @@ export default function EmployeePTOTrackingTab() {
   }, [selectedYear])
 
   /* ---------------- HELPERS ---------------- */
+
+  const getDatesBetween = (start: string, end: string) => {
+    const dates: string[] = []
+    let current = new Date(start)
+    const last = new Date(end)
+
+    while (current <= last) {
+      dates.push(current.toISOString().split("T")[0])
+      current.setDate(current.getDate() + 1)
+    }
+
+    return dates
+  }
 
   const getFilteredRecords = () =>
     ptoRecords.filter((r) => {
@@ -216,87 +231,82 @@ export default function EmployeePTOTrackingTab() {
     ) : null
 
   /* ---------------- PTO SUBMISSION (MOBILE LOGIC) ---------------- */
+const submitPTORequest = async () => {
+  if (
+    !currentUser ||
+    !currentEmployee ||
+    !ptoRequest.start_date ||
+    !ptoRequest.end_date
+  ) {
+    toast({ title: "Invalid Request", variant: "destructive" })
+    return
+  }
 
-  const submitPTORequest = async () => {
-    if (!currentUser || !currentEmployee || !ptoRequest.date) {
-      toast({ title: "Invalid Request", variant: "destructive" })
-      return
-    }
+  const dates = getDatesBetween(
+    ptoRequest.start_date,
+    ptoRequest.end_date
+  )
 
-    const requestDate = new Date(ptoRequest.date)
-    requestDate.setHours(0, 0, 0, 0)
+  setSubmittingPTORequest(true)
 
-    if (!isFuture(requestDate) && !isToday(requestDate)) {
-      toast({
-        title: "Invalid Date",
-        description: "You can only request leave for today or future dates.",
-        variant: "destructive",
-      })
-      return
-    }
+  try {
+    const yearPtoRecords = ptoRecords.filter(r => {
+      const d = new Date(r.date)
+      return (
+        r.sender_email === currentEmployee.email_id &&
+        r.is_pto &&
+        d >= yearStart &&
+        d <= yearEnd
+      )
+    })
 
-    setSubmittingPTORequest(true)
+    const approvedDays =
+      yearPtoRecords.filter(r => r.status === "approved").length
+    const pendingDays =
+      yearPtoRecords.filter(r => r.status === "pending").length
 
-    try {
-      const yearPtoRecords = ptoRecords.filter((r) => {
-        const d = new Date(r.date)
-        return (
-          r.sender_email === currentEmployee.email_id &&
-          r.is_pto &&
-          d >= yearStart &&
-          d <= yearEnd
-        )
-      })
+    const remaining =
+      BASE_PTO_LIMIT_DAYS - approvedDays - pendingDays
 
-      const approvedDays =
-        yearPtoRecords.filter((r) => r.status === "approved").reduce((s, r) => s + r.hours, 0) / 8
-      const pendingDays =
-        yearPtoRecords.filter((r) => r.status === "pending").reduce((s, r) => s + r.hours, 0) / 8
-
-      const isPtoExhausted = BASE_PTO_LIMIT_DAYS - approvedDays <= 0 && pendingDays === 0
-
-      let is_pto = true
-      let activity = "PTO Request"
-
-      if (!isPtoExhausted && approvedDays + pendingDays + 1 > BASE_PTO_LIMIT_DAYS) {
-        toast({
-          title: "PTO Limit Reached",
-          description: "Wait for manager to process existing requests.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      if (isPtoExhausted) {
-        is_pto = false
-        activity = "Non-PTO Leave Request"
-      }
-
-      await supabase.from("pto_records").insert({
-        date: ptoRequest.date,
-        day: requestDate.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase(),
+    const rows = dates.map((date, index) => {
+      const is_pto = index < remaining
+      return {
+        date,
+        day: new Date(date)
+          .toLocaleDateString("en-US", { weekday: "short" })
+          .toUpperCase(),
         hours: 8,
         employee_name: currentEmployee.name,
         employee_id: currentEmployee.employee_id,
         sender_email: currentUser.email,
-        activity,
+        activity: is_pto ? "PTO Request" : "Non-PTO Leave Request",
         status: "pending",
         request_reason: ptoRequest.reason,
         is_pto,
-      })
+      }
+    })
 
-      toast({
-        title: "Request Submitted",
-        description: is_pto ? "PTO request submitted." : "Non-PTO request submitted.",
-      })
+    await supabase.from("pto_records").insert(rows)
 
-      setIsPTORequestOpen(false)
-      setPtoRequest({ date: "", hours: 8, reason: "" })
-      loadPTORecords()
-    } finally {
-      setSubmittingPTORequest(false)
-    }
+    toast({
+      title: "Leave Request Submitted",
+      description: `${rows.length} day(s) submitted for approval`,
+    })
+
+    setIsPTORequestOpen(false)
+    setPtoRequest({
+      start_date: "",
+      end_date: "",
+      hours: 8,
+      reason: "",
+    })
+
+    loadPTORecords()
+  } finally {
+    setSubmittingPTORequest(false)
   }
+}
+
 
   const submitCarryForwardRequest = async () => {
     setSubmittingCarryForward(true)
@@ -589,17 +599,38 @@ export default function EmployeePTOTrackingTab() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="pto-date" className="text-white">Date</Label>
-              <Input
-                id="pto-date"
-                type="date"
-                value={ptoRequest.date}
-                min={format(new Date(), 'yyyy-MM-dd')}
-                onChange={(e) => setPtoRequest(prev => ({ ...prev, date: e.target.value }))}
-                className="bg-gray-800 border-gray-600 text-white"
-              />
+
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-white">Start Date</Label>
+                <Input
+                  type="date"
+                  min={format(new Date(), "yyyy-MM-dd")}
+                  value={ptoRequest.start_date}
+                  onChange={(e) =>
+                    setPtoRequest(prev => ({ ...prev, start_date: e.target.value }))
+                  }
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
+              </div>
+
+              <div>
+                <Label className="text-white">End Date</Label>
+                <Input
+                  type="date"
+                  min={ptoRequest.start_date || format(new Date(), "yyyy-MM-dd")}
+                  value={ptoRequest.end_date}
+                  onChange={(e) =>
+                    setPtoRequest(prev => ({ ...prev, end_date: e.target.value }))
+                  }
+                  className="bg-gray-800 border-gray-600 text-white"
+                />
+              </div>
             </div>
+
+
+
             <div>
               <Label htmlFor="pto-hours" className="text-white">Hours</Label>
               <Input
