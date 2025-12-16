@@ -38,6 +38,37 @@ export default function ReportsTab() {
   const loadCombinedData = async () => {
     setIsLoading(true)
     try {
+
+      // Fetch holidays
+      const { data: holidayData, error: holidayError } = await supabase
+        .from("holidays")
+        .select("holiday_date");
+
+      if (holidayError) {
+        console.error("Holiday data error:", holidayError)
+      }
+
+      // Transform holidays into timesheet-like entries (applies to all employees)
+      const transformedHolidayData = (holidayData || []).flatMap(holiday =>
+        (timesheetData || []).map(ts => ({
+          id: `holiday_${holiday.holiday_date}_${ts.employee_id}`,
+          employee_id: ts.employee_id,
+          employee_name: ts.employee_name,
+          sender_email: ts.sender_email,
+          date: holiday.holiday_date,
+          day: new Date(holiday.holiday_date).toLocaleDateString("en-US", { weekday: "short" }).toUpperCase(),
+          hours: 8,
+          activity: "HOLIDAY",
+          client: "",
+          project: "",
+          required_hours: 8,
+          created_at: null,
+          updated_at: null
+        }))
+      )
+
+
+
       // Fetch timesheet data (excluding PTO entries)
       const { data: timesheetData, error: timesheetError } = await supabase
         .from("timesheets")
@@ -76,12 +107,30 @@ export default function ReportsTab() {
         updated_at: pto.updated_at
       }))
 
-      // Combine timesheet and PTO data
+      // Build a lookup of existing timesheets (employee_id + date)
+      const timesheetKeySet = new Set(
+        (timesheetData || []).map(
+          t => `${t.employee_id}_${t.date}`
+        )
+      )
+
+      // Only include holidays if NO timesheet exists for the same employee + date
+      const filteredHolidayData = transformedHolidayData.filter(
+        h => !timesheetKeySet.has(`${h.employee_id}_${h.date}`)
+      )
+
+      // Only include PTO records if NO timesheet exists for the same employee + date
+      const filteredPtoData = transformedPtoData.filter(
+        pto => !timesheetKeySet.has(`${pto.employee_id}_${pto.date}`)
+      )
+
       const combined = [
         ...(timesheetData || []),
-        ...transformedPtoData
+        ...filteredPtoData,
+        ...filteredHolidayData
       ]
 
+      
       // Sort by date (most recent first)
       combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
