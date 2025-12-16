@@ -428,8 +428,15 @@ async function processTimesheetExtraction(
         projectName = projectInfo.project;
         requiredHours = projectInfo.required_hours || 0;
       }
-      const entryDateStr = new Date(entry.date).toISOString().split("T")[0];
-
+      function normalizeDate(dateStr: string): string {
+        if (dateStr.includes("/")) {
+          const [month, day, year] = dateStr.split("/");
+          return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+        }
+        return dateStr;
+      }
+      
+      const entryDateStr = normalizeDate(entry.date);
       const isHoliday = holidays?.some(
         h => h.holiday_date === entryDateStr
       );
@@ -439,6 +446,7 @@ async function processTimesheetExtraction(
         entryDateStr >= p.start_date &&
         entryDateStr <= p.end_date
       );
+
 
       return {
         ...entry,
