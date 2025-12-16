@@ -592,18 +592,10 @@ export default function ReportsTab() {
                         <td className="border-b px-4 py-2 text-black">{entry.employee_id || "N/A"}</td>
                         <td className="border-b px-4 py-2 text-black">{entry.employee_name || "N/A"}</td>
                         <td className="border-b px-4 py-2 text-black">
-                          {entry.activity === "PTO" ? (
-                            <span className="text-gray-500 italic">-</span>
-                          ) : (
-                            entry.client || "N/A"
-                          )}
+                          {entry.client || "-"}
                         </td>
                         <td className="border-b px-4 py-2 text-black">
-                          {entry.activity === "PTO" ? (
-                            <span className="text-gray-500 italic">-</span>
-                          ) : (
-                            entry.project || "N/A"
-                          )}
+                          {entry.project || "-"}
                         </td>
                         <td className="border-b px-4 py-2 text-black">{entry.date || "N/A"}</td>
                         <td className="border-b px-4 py-2 text-black">{entry.day || "N/A"}</td>
