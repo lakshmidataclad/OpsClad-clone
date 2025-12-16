@@ -30,6 +30,26 @@ export default function ReportsTab() {
     dateTo: "",
   })
 
+  const normalizeToISO = (dateStr: string) => {
+    if (!dateStr) return ""
+    if (dateStr.includes("/")) {
+      const [m, d, y] = dateStr.split("/")
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
+    }
+    if (dateStr.includes("-") && dateStr.split("-")[0].length === 4) {
+      return dateStr // already YYYY-MM-DD
+    }
+    // DD-MM-YYYY → YYYY-MM-DD
+    const [d, m, y] = dateStr.split("-")
+    return `${y}-${m}-${d}`
+  }
+
+  const formatForDisplay = (isoDate: string) => {
+    if (!isoDate) return ""
+    const [y, m, d] = isoDate.split("-")
+    return `${d}-${m}-${y}`
+  }
+
   // Load combined timesheet and PTO data on component mount
   useEffect(() => {
     loadCombinedData()
@@ -77,23 +97,38 @@ export default function ReportsTab() {
       // 4️⃣ Build lookup for existing timesheets (employee + date)
       const timesheetKeySet = new Set(
         (timesheetData || []).map(
-          t => `${t.employee_id}_${t.date}`
+          t => `${t.employee_id}_${normalizeToISO(t.date)}`
         )
       )
 
       // 5️⃣ Only include PTO records if NO timesheet exists for same employee + date
       const filteredPtoData = transformedPtoData.filter(
-        pto => !timesheetKeySet.has(`${pto.employee_id}_${pto.date}`)
+        pto =>
+          !timesheetKeySet.has(
+            `${pto.employee_id}_${normalizeToISO(pto.date)}`
+          )
       )
 
       // 6️⃣ Combine (timesheets always win)
       const combined = [
-        ...(timesheetData || []),
-        ...filteredPtoData,
+        ...(timesheetData || []).map(t => ({
+          ...t,
+          date: formatForDisplay(normalizeToISO(t.date)),
+          _isoDate: normalizeToISO(t.date), // internal use
+        })),
+        ...filteredPtoData.map(p => ({
+          ...p,
+          date: formatForDisplay(normalizeToISO(p.date)),
+          _isoDate: normalizeToISO(p.date),
+        })),
       ]
 
       // 7️⃣ Sort by date (latest first)
-      combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      combined.sort(
+        (a, b) =>
+          new Date(normalizeToISO(b.date)).getTime() -
+          new Date(normalizeToISO(a.date)).getTime()
+      )
 
       setCombinedData(combined)
 
@@ -167,7 +202,7 @@ export default function ReportsTab() {
 
       // Date filters
       if (filters.dateFrom || filters.dateTo) {
-        const itemDate = new Date(item.date)
+      const itemDate = new Date(normalizeToISO(item.date))
         if (filters.dateFrom && itemDate < new Date(filters.dateFrom)) {
           return false
         }
