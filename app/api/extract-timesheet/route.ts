@@ -400,17 +400,16 @@ async function processTimesheetExtraction(
     }
 
 
-    // Fetch holidays
+    // Fetch holidays adn PTO records
     const { data: holidays } = await supabase
       .from("holidays")
       .select("holiday_date");
 
-    // Fetch approved PTO requests
-    const { data: ptoRequests } = await supabase
-      .from("pto_requests")
-      .select("employee_id, start_date, end_date, status")
+    const { data: ptoRecords } = await supabase
+      .from("pto_records")
+      .select("employee_id, date")
+      .eq("is_pto", true)
       .eq("status", "approved");
-
 
 
 
@@ -435,16 +434,15 @@ async function processTimesheetExtraction(
         }
         return dateStr;
       }
-      
+
       const entryDateStr = normalizeDate(entry.date);
       const isHoliday = holidays?.some(
         h => h.holiday_date === entryDateStr
       );
 
-      const isPTO = ptoRequests?.some(p =>
+      const isPTO = ptoRecords?.some(p =>
         p.employee_id === entry.employee_id &&
-        entryDateStr >= p.start_date &&
-        entryDateStr <= p.end_date
+        p.date === entryDateStr
       );
 
 
