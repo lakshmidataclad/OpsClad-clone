@@ -399,6 +399,21 @@ async function processTimesheetExtraction(
       return;
     }
 
+
+    // Fetch holidays
+    const { data: holidays } = await supabase
+      .from("holidays")
+      .select("holiday_date");
+
+    // Fetch approved PTO requests
+    const { data: ptoRequests } = await supabase
+      .from("pto_requests")
+      .select("employee_id, start_date, end_date, status")
+      .eq("status", "approved");
+
+
+
+
     // Process extracted data to ensure proper structure
     const processedData = extractedData.map((entry: any) => {
       const emailKey = entry.sender_email?.toLowerCase();
@@ -413,13 +428,26 @@ async function processTimesheetExtraction(
         projectName = projectInfo.project;
         requiredHours = projectInfo.required_hours || 0;
       }
+      const entryDate = new Date(entry.date);
 
-      // Return properly structured entry
-      return {
-        ...entry,
-        project: projectName, // Only project name here
-        required_hours: requiredHours // Required hours in separate field
-      };
+      // 🔹 HOLIDAY check
+      const isHoliday = holidays?.some(
+        h => new Date(h.holiday_date).toDateString() === entryDate.toDateString()
+      );
+
+      // 🔹 PTO check
+      const isPTO = ptoRequests?.some(p =>
+        p.employee_id === entry.employee_id &&
+        entryDate >= new Date(p.start_date) &&
+        entryDate <= new Date(p.end_date)
+      );
+
+      return {
+        ...entry,
+        project: projectName,
+        required_hours: requiredHours,
+        activity: isHoliday ? "HOLIDAY" : isPTO ? "PTO" : entry.activity
+      };
     });
 
     await updateExtractionProgress(extractionId, {
