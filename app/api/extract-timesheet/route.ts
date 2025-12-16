@@ -428,18 +428,16 @@ async function processTimesheetExtraction(
         projectName = projectInfo.project;
         requiredHours = projectInfo.required_hours || 0;
       }
-      const entryDate = new Date(entry.date);
+      const entryDateStr = new Date(entry.date).toISOString().split("T")[0];
 
-      // 🔹 HOLIDAY check
       const isHoliday = holidays?.some(
-        h => new Date(h.holiday_date).toDateString() === entryDate.toDateString()
+        h => h.holiday_date === entryDateStr
       );
 
-      // 🔹 PTO check
       const isPTO = ptoRequests?.some(p =>
         p.employee_id === entry.employee_id &&
-        entryDate >= new Date(p.start_date) &&
-        entryDate <= new Date(p.end_date)
+        entryDateStr >= p.start_date &&
+        entryDateStr <= p.end_date
       );
 
       return {
