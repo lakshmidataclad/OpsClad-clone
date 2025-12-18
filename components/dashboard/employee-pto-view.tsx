@@ -230,26 +230,53 @@ export default function EmployeePTOTrackingTab() {
       </div>
     ) : null
 
+    /* SQL TO ADD UNIQUE CONSTRAINT TO PTO RECORDS TABLE
+    
+    ALTER TABLE pto_records
+    ADD CONSTRAINT unique_employee_date
+    UNIQUE (employee_id, date);
+    */
+
   /* ---------------- PTO SUBMISSION (MOBILE LOGIC) ---------------- */
 const submitPTORequest = async () => {
-  if (
-    !currentUser ||
-    !currentEmployee ||
-    !ptoRequest.start_date ||
-    !ptoRequest.end_date
-  ) {
+  if (!currentUser || !currentEmployee || !ptoRequest.start_date || !ptoRequest.end_date) {
     toast({ title: "Invalid Request", variant: "destructive" })
     return
   }
 
-  const dates = getDatesBetween(
-    ptoRequest.start_date,
-    ptoRequest.end_date
-  )
-
   setSubmittingPTORequest(true)
 
   try {
+    const requestedDates = getDatesBetween(
+      ptoRequest.start_date,
+      ptoRequest.end_date
+    )
+
+    // 🔴 STEP 1: Check for existing PTO on any requested date
+    const { data: existingRecords, error } = await supabase
+      .from("pto_records")
+      .select("date")
+      .eq("sender_email", currentEmployee.email_id)
+      .in("date", requestedDates)
+
+    if (error) {
+      throw error
+    }
+
+    if (existingRecords && existingRecords.length > 0) {
+      const conflictDates = existingRecords.map(r => r.date).join(", ")
+
+      toast({
+        title: "Date Conflict",
+        description: `You already have leave booked on: ${conflictDates}`,
+        variant: "destructive",
+      })
+
+      setSubmittingPTORequest(false)
+      return
+    }
+
+    // 🟢 STEP 2: Continue with existing PTO logic
     const yearPtoRecords = ptoRecords.filter(r => {
       const d = new Date(r.date)
       return (
@@ -260,31 +287,22 @@ const submitPTORequest = async () => {
       )
     })
 
-    const approvedDays =
-      yearPtoRecords.filter(r => r.status === "approved").length
-    const pendingDays =
-      yearPtoRecords.filter(r => r.status === "pending").length
+    const approvedDays = yearPtoRecords.filter(r => r.status === "approved").length
+    const pendingDays = yearPtoRecords.filter(r => r.status === "pending").length
+    const remainingPTO = BASE_PTO_LIMIT_DAYS - approvedDays - pendingDays
 
-    const remaining =
-      BASE_PTO_LIMIT_DAYS - approvedDays - pendingDays
-
-    const rows = dates.map((date, index) => {
-      const is_pto = index < remaining
-      return {
-        date,
-        day: new Date(date)
-          .toLocaleDateString("en-US", { weekday: "short" })
-          .toUpperCase(),
-        hours: 8,
-        employee_name: currentEmployee.name,
-        employee_id: currentEmployee.employee_id,
-        sender_email: currentUser.email,
-        activity: is_pto ? "PTO Request" : "Non-PTO Leave Request",
-        status: "pending",
-        request_reason: ptoRequest.reason,
-        is_pto,
-      }
-    })
+    const rows = requestedDates.map((date, index) => ({
+      date,
+      day: new Date(date).toLocaleDateString("en-US", { weekday: "short" }).toUpperCase(),
+      hours: 8,
+      employee_name: currentEmployee.name,
+      employee_id: currentEmployee.employee_id,
+      sender_email: currentEmployee.email_id,
+      activity: index < remainingPTO ? "PTO Request" : "Non-PTO Leave Request",
+      status: "pending",
+      request_reason: ptoRequest.reason,
+      is_pto: index < remainingPTO,
+    }))
 
     await supabase.from("pto_records").insert(rows)
 
@@ -294,18 +312,21 @@ const submitPTORequest = async () => {
     })
 
     setIsPTORequestOpen(false)
-    setPtoRequest({
-      start_date: "",
-      end_date: "",
-      hours: 8,
-      reason: "",
-    })
-
+    setPtoRequest({ start_date: "", end_date: "", hours: 8, reason: "" })
     loadPTORecords()
+
+  } catch (err) {
+    console.error(err)
+    toast({
+      title: "Error",
+      description: "Failed to submit leave request.",
+      variant: "destructive",
+    })
   } finally {
     setSubmittingPTORequest(false)
   }
 }
+
 
 
   const submitCarryForwardRequest = async () => {
