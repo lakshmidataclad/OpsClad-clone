@@ -261,22 +261,46 @@ export default function ReportsTab() {
   const updateSummaryStats = (data: TimesheetEntry[]) => {
     // Calculate summary statistics
     const totalHours = data.reduce((sum, item) => sum + item.hours, 0)
+
+    const totalPTOandHolidayHours = data
+      .filter(item =>
+        item.activity === "PTO" ||
+        item.activity === "Holiday"
+      )
+      .reduce((sum, item) => sum + item.hours, 0)
+
     const uniqueEmployees = new Set(data.map((item) => item.employee_name).filter(Boolean))
     
     // For clients and projects, only count non-empty values (excludes PTO records)
     const uniqueClients = new Set(data.map((item) => item.client).filter(Boolean))
     const uniqueProjects = new Set(data.map((item) => item.project).filter(Boolean))
 
-    const dates = data.map((item) => new Date(item.date))
+    const dates = data
+      .map((item) => item._isoDate)
+      .filter(Boolean)
+      .map((d) => new Date(d))   
+
     const uniqueDates = new Set(dates.map((date) => date.toDateString()))
     const avgHoursPerDay = uniqueDates.size > 0 ? totalHours / uniqueDates.size : 0
 
-    const minDate = dates.length > 0 ? new Date(Math.min(...dates.map((d) => d.getTime()))).toLocaleDateString() : "-"
-    const maxDate = dates.length > 0 ? new Date(Math.max(...dates.map((d) => d.getTime()))).toLocaleDateString() : "-"
-    const dateRange = minDate !== "-" && maxDate !== "-" ? `${minDate} - ${maxDate}` : "-"
+    const minDate =
+      dates.length > 0
+        ? new Date(Math.min(...dates.map(d => d.getTime())))
+            .toLocaleDateString("en-GB")
+        : "-"
+
+    const maxDate =
+      dates.length > 0
+        ? new Date(Math.max(...dates.map(d => d.getTime())))
+            .toLocaleDateString("en-GB")
+        : "-"
+
+    const dateRange =
+      minDate !== "-" && maxDate !== "-" ? `${minDate} - ${maxDate}` : "-"
 
     setSummaryStats({
       totalHours,
+      totalPTOandHolidayHours: totalPTOandHolidayHours,
       totalEmployees: uniqueEmployees.size,
       totalClients: uniqueClients.size,
       totalProjects: uniqueProjects.size,
@@ -526,11 +550,19 @@ export default function ReportsTab() {
       {showSummary && summaryStats && (
         <div className="bg-gray-800 rounded-lg p-6">
           <h4 className="text-lg font-medium mb-4 text-white">Summary Statistics</h4>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
             <div className="bg-gray-950 p-4 rounded-lg text-center shadow-sm">
               <h4 className="text-xl font-medium text-orange-600">{summaryStats.totalHours.toFixed(1)}</h4>
               <p className="text-sm text-gray-400">Total Hours</p>
             </div>
+
+            <div className="bg-gray-950 p-4 rounded-lg text-center shadow-sm">
+              <h4 className="text-xl font-medium text-orange-600">
+                {summaryStats.totalPTOandHolidayHours.toFixed(1)}
+              </h4>
+              <p className="text-sm text-gray-400">Total PTO & Holiday Hours</p>
+            </div>
+
             <div className="bg-gray-950 p-4 rounded-lg text-center shadow-sm">
               <h4 className="text-xl font-medium text-orange-600">{summaryStats.totalEmployees}</h4>
               <p className="text-sm text-gray-400">Employees</p>

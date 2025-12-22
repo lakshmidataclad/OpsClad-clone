@@ -39,6 +39,7 @@ export interface FilterOptions {
 
 export interface SummaryStats {
   totalHours: number
+  totalPTOandHolidayHours: number
   totalEmployees: number
   totalClients: number
   totalProjects: number
