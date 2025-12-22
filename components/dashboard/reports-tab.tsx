@@ -579,27 +579,14 @@ export default function ReportsTab() {
               <h4 className="text-xl font-medium text-orange-600">{summaryStats.avgHoursPerDay.toFixed(1)}</h4>
               <p className="text-sm text-gray-400">Avg Hours/Day</p>
             </div>
-            <div
-              className="bg-gray-950 p-4 rounded-lg shadow-sm
-                        flex flex-col items-center justify-center
-                        text-center h-28"
-            >
-              <span className="text-[10px] uppercase tracking-wide text-gray-400">
-                Date Range
-              </span>
-
-              <div
-                className="
-                  mt-1
-                  text-orange-600 font-semibold leading-tight
-                  text-[clamp(10px,1.1vw,14px)]
-                  max-w-full break-words
-                  whitespace-pre-line
-                "
-              >
-                {summaryStats.dateRange.replace(" - ", "\n–\n")}
+              <div className="bg-gray-950 p-4 rounded-lg text-center shadow-sm">
+                <h4 className="text-xl font-medium text-orange-600">
+                  {summaryStats.dateRange
+                    .replace(/(\d{4})/g, "\n$1")
+                    .replace(" - ", "\n–\n")}
+                </h4>
+                <p className="text-sm text-gray-400">Date Range</p>
               </div>
-            </div>
           </div>
         </div>
       )}

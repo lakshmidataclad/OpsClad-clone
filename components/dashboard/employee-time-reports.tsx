@@ -24,6 +24,21 @@ export default function EmployeeReportsTab() {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
+
+  const normalizeToISO = (dateStr: string) => {
+    if (!dateStr) return ""
+    if (dateStr.includes("/")) {
+      const [m, d, y] = dateStr.split("/")
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
+    }
+    if (dateStr.includes("-") && dateStr.split("-")[0].length === 4) {
+      return dateStr // already YYYY-MM-DD
+    }
+    // DD-MM-YYYY → YYYY-MM-DD
+    const [d, m, y] = dateStr.split("-")
+    return `${y}-${m}-${d}`
+  }
+
   // Remove employee filter since this is employee view
   const [filters, setFilters] = useState<Omit<FilterOptions, 'employee'>>({
     client: "",
@@ -133,10 +148,15 @@ export default function EmployeeReportsTab() {
 
       // Combine timesheet and PTO data
       const combined = [
-        ...(timesheetData || []),
-        ...transformedPtoData
+        ...(timesheetData || []).map(t => ({
+          ...t,
+          _isoDate: normalizeToISO(t.date),
+        })),
+        ...transformedPtoData.map(p => ({
+          ...p,
+          _isoDate: normalizeToISO(p.date),
+        })),
       ]
-
       // Sort by date (most recent first)
       combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
@@ -267,8 +287,12 @@ export default function EmployeeReportsTab() {
     const uniqueClients = new Set(data.map((item) => item.client).filter(Boolean))
     const uniqueProjects = new Set(data.map((item) => item.project).filter(Boolean))
 
-    const dates = data.map((item) => new Date(item.date))
-    const uniqueDates = new Set(dates.map((date) => date.toDateString()))
+    const dates = data
+      .map((item) => item._isoDate)
+      .filter(Boolean)
+      .map((d) => new Date(d))      
+    
+      const uniqueDates = new Set(dates.map((date) => date.toDateString()))
     const avgHoursPerDay = uniqueDates.size > 0 ? totalHours / uniqueDates.size : 0
 
     const minDate = dates.length > 0 ? new Date(Math.min(...dates.map((d) => d.getTime()))).toLocaleDateString() : "-"
@@ -510,12 +534,14 @@ export default function EmployeeReportsTab() {
               <h4 className="text-xl font-medium text-orange-600">{summaryStats.avgHoursPerDay.toFixed(1)}</h4>
               <p className="text-sm text-gray-400">Avg Hours/Day</p>
             </div>
-              <div className="bg-gray-950 p-4 rounded-lg shadow-sm flex flex-col items-center justify-center text-center h-28">
-                <span className="text-[10px] uppercase tracking-wide text-gray-400"> Date Range </span>
-                <div className=" mt-1 text-orange-600 font-semibold leading-tighttext-[clamp(10px,1.2vw,14px)] max-w-full break-words">
-                  {summaryStats.dateRange.replace(" - ", "\n–\n")}
-                </div>
-              </div>
+            <div className="bg-gray-950 p-4 rounded-lg text-center shadow-sm">
+              <h4 className="text-xl font-medium text-orange-600">    
+                {summaryStats.dateRange
+                  .replace(/(\d{4})/g, "\n$1")
+                  .replace(" - ", "\n–\n")}
+              </h4>
+              <p className="text-sm text-gray-400">Date Range</p>
+            </div>
           </div>
         </div>
       )}
