@@ -383,8 +383,6 @@ export default function HomePage() {
       const { data: ptoData, error: ptoError } = await supabase
         .from('pto_records')
         .select('*')
-        .gte('date', formatDateForDB(startDate))
-        .lte('date', formatDateForDB(endDate))
         .order('date', { ascending: true })
 
       if (ptoError) {
@@ -457,7 +455,6 @@ return Object.entries(byEmp)
     )
 
     const ranges = buildContinuousRanges(sorted.map((x: any) => x.date))
-      .filter(r => rangeIntersectsMonth(r.start, r.end, selectedMonthKey))
 
     return {
       name,
@@ -465,7 +462,6 @@ return Object.entries(byEmp)
     }
   })
   // ✅ KEY FIX: remove employees with no PTO in this month
-  .filter(emp => emp.ranges.length > 0)
 }, [ptoRecords, selectedMonthKey])
 
 
