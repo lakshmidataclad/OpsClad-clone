@@ -386,7 +386,6 @@ export default function HomePage() {
         .select('*')
         .gte('date', formatDateForDB(startDate))
         .lte('date', formatDateForDB(endDate))
-        .eq('status', 'approved')
         .order('date', { ascending: true })
 
       if (ptoError) {
@@ -434,10 +433,6 @@ export default function HomePage() {
   }, [])
 
 
-
-
-const currentMonth = formatDate(new Date(), "yyyy-MM")
-
 const ptoTable = useMemo(() => {
   const byEmp: any = {}
 
@@ -460,7 +455,7 @@ const ptoTable = useMemo(() => {
     const sorted = items.sort((a: any, b: any) =>
       a.date.localeCompare(b.date)
     )
-    
+
     const ranges = buildContinuousRanges(sorted.map((x: any) => x.date))
       .map((r: any) => {
         const statuses = sorted
@@ -480,21 +475,10 @@ const ptoTable = useMemo(() => {
 
     return {
       name,
-      ranges: ranges.map((r: any) => ({
-        ...r,
-        status: sorted.some(
-          (x: any) => x.date >= r.start && x.date <= r.end && x.status === "Pending"
-        )
-          ? "Pending"
-          : "Approved",
-      })),
+      ranges,
     }
   })
-}, [ptoRecords])
-
-
-
-
+}, [ptoRecords, selectedMonthKey])
 
 
 
@@ -517,8 +501,10 @@ const ptoTable = useMemo(() => {
     const getHolidaysForDate = (holiday_date: Date): HolidayRecord[] => {
     return holidays.filter(holiday => {
       if (!holiday.holiday_date) return false
-      const fn_holiday_date = parseISODate(holiday.holiday_date)
-      return isSameDayMonth(fn_holiday_date, holiday_date)
+    const normalized = normalizeDate(holiday.holiday_date)
+      if (!normalized) return false
+    const fn_holiday_date = parseISODate(normalized)      
+    return isSameDayMonth(fn_holiday_date, holiday_date)
     })
   }
 
