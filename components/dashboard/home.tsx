@@ -320,6 +320,21 @@ const buildContinuousRanges = (dates: string[]) => {
 
 
 
+const [selectedMonth, setSelectedMonth] = useState(() => {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), 1)
+})
+
+
+const changeMonth = (direction: "prev" | "next") => {
+  setSelectedMonth(prev => {
+    const d = new Date(prev)
+    d.setMonth(d.getMonth() + (direction === "prev" ? -1 : 1))
+    return d
+  })
+}
+
+const selectedMonthKey = formatDate(selectedMonth, "yyyy-MM")
 
 
 
@@ -423,6 +438,21 @@ const ptoTable = useMemo(() => {
       a.date.localeCompare(b.date)
     )
     const ranges = buildContinuousRanges(sorted.map((x: any) => x.date))
+      .map((r: any) => ({
+        ...r,
+        status: sorted.some(
+          (x: any) =>
+            x.date >= r.start &&
+            x.date <= r.end &&
+            x.status === "Pending"
+        )
+          ? "Pending"
+          : "Approved",
+      }))
+      .filter(r =>
+        r.start.startsWith(selectedMonthKey) ||
+        r.end.startsWith(selectedMonthKey)
+      )
 
     return {
       name,
@@ -507,12 +537,54 @@ const ptoTable = useMemo(() => {
     }))
   }
 
-  const upcomingEvents = ptoRecords
-    .filter(record => {
-      const recordDate = parseISODate(record.date)
-      return isFuture(recordDate) || isToday(recordDate)
+
+
+  const upcomingEvents = useMemo(() => {
+    const events: {
+      id: string
+      title: string
+      date: string
+      type: "Birthday" | "Holiday"
+    }[] = []
+
+    const year = selectedMonth.getFullYear()
+    const month = String(selectedMonth.getMonth() + 1).padStart(2, "0")
+
+    // 🎂 Birthdays
+    employees.forEach(emp => {
+      if (!emp.birthday) return
+      const d = normalizeDate(emp.birthday)
+      if (!d) return
+
+      const [, mm, dd] = d.split("-")
+      if (mm === month) {
+        events.push({
+          id: `bday-${emp.id}`,
+          title: `🎂 ${emp.name}`,
+          date: `${year}-${mm}-${dd}`,
+          type: "Birthday",
+        })
+      }
     })
-    .slice(0, 10) // Show next 10 upcoming events
+
+    // 🎉 Holidays
+    holidays.forEach(h => {
+      if (!h.holiday_date.startsWith(selectedMonthKey)) return
+
+      events.push({
+        id: `hol-${h.id}`,
+        title: `🎉 ${h.holiday}`,
+        date: h.holiday_date,
+        type: "Holiday",
+      })
+    })
+
+    return events.sort((a, b) => a.date.localeCompare(b.date))
+  }, [employees, holidays, selectedMonthKey])
+
+
+
+
 
   const todayEvents = ptoRecords.filter(record => isToday(parseISODate(record.date)))
   const todayBirthdays = getBirthdaysForDate(new Date())
@@ -557,8 +629,34 @@ const ptoTable = useMemo(() => {
         <TabsTrigger value="calendar">Calendar</TabsTrigger>
       </TabsList>
 
-      {/* OVERVIEW TAB (EMPTY PLACEHOLDER) */}
+      {/* OVERVIEW TAB */}
     <TabsContent value="overview" className="space-y-6">
+
+
+      <Card className="bg-gray-900 border-gray-700">
+        <CardContent className="flex items-center justify-between py-4">
+          <Button
+            variant="ghost"
+            onClick={() => changeMonth("prev")}
+            className="text-gray-400 hover:text-white"
+          >
+            ◀
+          </Button>
+
+          <div className="text-white font-semibold text-lg">
+            {formatDate(selectedMonth, "MMMM yyyy")}
+          </div>
+
+          <Button
+            variant="ghost"
+            onClick={() => changeMonth("next")}
+            className="text-gray-400 hover:text-white"
+          >
+            ▶
+          </Button>
+        </CardContent>
+      </Card>
+
 
       {/* UPCOMING EVENTS */}
       <Card className="bg-gray-900 border-gray-700">
@@ -567,17 +665,18 @@ const ptoTable = useMemo(() => {
         </CardHeader>
         <CardContent className="space-y-3 text-gray-300">
           {upcomingEvents.length === 0 ? (
-            <p>No upcoming events</p>
+            <p>No upcoming events this month</p>
           ) : (
             upcomingEvents.map(ev => (
               <div key={ev.id} className="flex justify-between">
-                <span>{ev.employee_name}</span>
+                <span>{ev.title}</span>
                 <span>{formatDate(parseISODate(ev.date), "MMM dd")}</span>
               </div>
             ))
           )}
         </CardContent>
       </Card>
+
 
       {/* PTO SUMMARY */}
       <Card className="bg-gray-900 border-gray-700">
