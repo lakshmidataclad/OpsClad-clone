@@ -376,9 +376,8 @@ export default function HomePage() {
       setLoading(true)
       
       // Get records for the next 3 months to show upcoming events
-      const startDate = new Date()
-      startDate.setHours(0, 0, 0, 0)
-      const endDate = endOfMonth(addMonths(new Date(), 3))
+      const startDate = new Date(2000, 0, 1)
+      const endDate = new Date(2100, 11, 31)
 
       // Load PTO records
       const { data: ptoData, error: ptoError } = await supabase
