@@ -320,22 +320,6 @@ const buildContinuousRanges = (dates: string[]) => {
 
 
 
-const [selectedMonth, setSelectedMonth] = useState(() => {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), 1)
-})
-
-
-const changeMonth = (direction: "prev" | "next") => {
-  setSelectedMonth(prev => {
-    const d = new Date(prev)
-    d.setMonth(d.getMonth() + (direction === "prev" ? -1 : 1))
-    return d
-  })
-}
-
-const selectedMonthKey = formatDate(selectedMonth, "yyyy-MM")
-
 
 
 export default function HomePage() {
@@ -347,6 +331,21 @@ export default function HomePage() {
   const [showWelcome, setShowWelcome] = useState(true)
   const [showContent, setShowContent] = useState(false)
   const [selectedDate, setSelectedDate] = useState<SelectedDateInfo | null>(null)
+
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+  const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
+
+  const changeMonth = (direction: "prev" | "next") => {
+    setSelectedMonth(prev => {
+      const d = new Date(prev)
+      d.setMonth(d.getMonth() + (direction === "prev" ? -1 : 1))
+      return d
+    })
+  }
+
+  const selectedMonthKey = formatDate(selectedMonth, "yyyy-MM")
   
   const loadData = async () => {
     try {
