@@ -129,6 +129,16 @@ const formatDateForDB = (date: Date): string => {
          date.getDate().toString().padStart(2, '0')
 }
 
+
+const rangeIntersectsMonth = (
+  start: string,
+  end: string,
+  monthKey: string
+) => {
+  return expandRange(start, end).some(d => d.startsWith(monthKey))
+}
+
+
 // Typing animation component
 const TypingWelcome = ({ employeeName, onComplete }: { employeeName: string, onComplete: () => void }) => {
   const [displayedText, setDisplayedText] = useState('')
@@ -270,17 +280,31 @@ const DateDetailsModal = ({ selectedDate, onClose }: { selectedDate: SelectedDat
 
 
 
-
-// ======== RN SHARED HELPERS (NO UI) ========
 const normalizeDate = (date: string | null): string | null => {
   if (!date) return null
-  if (date.includes("T")) return date.split("T")[0]
-  if (date.includes("/")) {
-    const [day, month, year] = date.split("/")
-    return `${year}-${month}-${day}`
+
+  // ISO with time → YYYY-MM-DD
+  if (date.includes("T")) {
+    return date.split("T")[0]
   }
-  return date
+
+  // DD/MM/YYYY → YYYY-MM-DD
+  if (date.includes("/")) {
+    const [d, m, y] = date.split("/")
+    if (y && m && d) {
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
+    }
+  }
+
+  // Already ISO
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date
+  }
+
+  // Fallback (invalid / unexpected)
+  return null
 }
+
 
 const expandRange = (start: string, end: string): string[] => {
   const s = new Date(start)
@@ -436,22 +460,23 @@ const ptoTable = useMemo(() => {
     const sorted = items.sort((a: any, b: any) =>
       a.date.localeCompare(b.date)
     )
+    
     const ranges = buildContinuousRanges(sorted.map((x: any) => x.date))
-      .map((r: any) => ({
-        ...r,
-        status: sorted.some(
-          (x: any) =>
-            x.date >= r.start &&
-            x.date <= r.end &&
-            x.status === "Pending"
-        )
-          ? "Pending"
-          : "Approved",
-      }))
-      .filter(r =>
-        r.start.startsWith(selectedMonthKey) ||
-        r.end.startsWith(selectedMonthKey)
-      )
+      .map((r: any) => {
+        const statuses = sorted
+          .filter(
+            (x: any) => x.date >= r.start && x.date <= r.end
+          )
+          .map((x: any) => x.status)
+
+        return {
+          ...r,
+          status: statuses.includes("Pending") ? "Pending" : "Approved",
+        }
+      })
+      // ✅ FIX: show PTO if it overlaps selected month
+      .filter(r => rangeIntersectsMonth(r.start, r.end, selectedMonthKey))
+
 
     return {
       name,
@@ -546,41 +571,43 @@ const ptoTable = useMemo(() => {
       type: "Birthday" | "Holiday"
     }[] = []
 
-    const year = selectedMonth.getFullYear()
-    const month = String(selectedMonth.getMonth() + 1).padStart(2, "0")
+    const selectedYear = selectedMonth.getFullYear()
+    const selectedMonthStr = String(selectedMonth.getMonth() + 1).padStart(2, "0")
 
-    // 🎂 Birthdays
+    // 🎂 Birthdays (month-based)
     employees.forEach(emp => {
-      if (!emp.birthday) return
-      const d = normalizeDate(emp.birthday)
-      if (!d) return
+      const normalized = normalizeDate(emp.birthday)
+      if (!normalized) return
 
-      const [, mm, dd] = d.split("-")
-      if (mm === month) {
-        events.push({
-          id: `bday-${emp.id}`,
-          title: `🎂 ${emp.name}`,
-          date: `${year}-${mm}-${dd}`,
-          type: "Birthday",
-        })
-      }
+      const [, birthMonth, birthDay] = normalized.split("-")
+      if (birthMonth !== selectedMonthStr) return
+
+      events.push({
+        id: `bday-${emp.id}`,
+        title: `🎂 ${emp.name}`,
+        date: `${selectedYear}-${birthMonth}-${birthDay}`,
+        type: "Birthday",
+      })
     })
 
-    // 🎉 Holidays
+    // 🎉 Holidays (FULL DATE-based)
     holidays.forEach(h => {
-      if (!h.holiday_date.startsWith(selectedMonthKey)) return
+      const normalized = normalizeDate(h.holiday_date)
+      if (!normalized) return
+
+      // normalized is now YYYY-MM-DD
+      if (!normalized.startsWith(`${selectedYear}-${selectedMonthStr}`)) return
 
       events.push({
         id: `hol-${h.id}`,
         title: `🎉 ${h.holiday}`,
-        date: h.holiday_date,
+        date: normalized,
         type: "Holiday",
       })
     })
 
     return events.sort((a, b) => a.date.localeCompare(b.date))
-  }, [employees, holidays, selectedMonthKey])
-
+  }, [employees, holidays, selectedMonth])
 
 
 
