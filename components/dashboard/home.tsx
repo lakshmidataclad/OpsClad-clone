@@ -305,6 +305,11 @@ const normalizeDate = (date: string | null): string | null => {
   return null
 }
 
+const formatISOToDDMMYYYY = (iso: string) => {
+  const [y, m, d] = iso.split("-")
+  return `${d}-${m}-${y}`
+}
+
 
 const expandRange = (start: string, end: string): string[] => {
   const s = new Date(start)
@@ -454,8 +459,18 @@ return Object.entries(byEmp)
       a.date.localeCompare(b.date)
     )
 
-    const ranges = buildContinuousRanges(sorted.map((x: any) => x.date))
-
+  const ranges = buildContinuousRanges(sorted.map((x: any) => x.date))
+    .map(r => ({
+      ...r,
+      status: sorted.some(
+        (x: any) =>
+          x.date >= r.start &&
+          x.date <= r.end &&
+          x.status === "Pending"
+      )
+        ? "Pending"
+        : "Approved",
+    }))
     return {
       name,
       ranges,
@@ -688,7 +703,7 @@ return Object.entries(byEmp)
                 <p className="font-semibold text-white">{emp.name}</p>
                 {emp.ranges.map((r: any, i: number) => (
                   <p key={i} className="text-sm text-gray-300">
-                    • {r.start} → {r.end} ({r.status})
+                    • {formatISOToDDMMYYYY(r.start)} → {formatISOToDDMMYYYY(r.end)} ({r.status})
                   </p>
                 ))}
               </div>
