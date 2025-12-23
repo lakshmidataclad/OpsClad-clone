@@ -451,33 +451,22 @@ const ptoTable = useMemo(() => {
     })
   })
 
-  return Object.entries(byEmp).map(([name, items]: any) => {
+return Object.entries(byEmp)
+  .map(([name, items]: any) => {
     const sorted = items.sort((a: any, b: any) =>
       a.date.localeCompare(b.date)
     )
 
     const ranges = buildContinuousRanges(sorted.map((x: any) => x.date))
-      .map((r: any) => {
-        const statuses = sorted
-          .filter(
-            (x: any) => x.date >= r.start && x.date <= r.end
-          )
-          .map((x: any) => x.status)
-
-        return {
-          ...r,
-          status: statuses.includes("Pending") ? "Pending" : "Approved",
-        }
-      })
-      // ✅ FIX: show PTO if it overlaps selected month
       .filter(r => rangeIntersectsMonth(r.start, r.end, selectedMonthKey))
-
 
     return {
       name,
       ranges,
     }
   })
+  // ✅ KEY FIX: remove employees with no PTO in this month
+  .filter(emp => emp.ranges.length > 0)
 }, [ptoRecords, selectedMonthKey])
 
 
