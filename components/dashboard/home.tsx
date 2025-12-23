@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -268,6 +268,61 @@ const DateDetailsModal = ({ selectedDate, onClose }: { selectedDate: SelectedDat
   )
 }
 
+
+
+
+// ======== RN SHARED HELPERS (NO UI) ========
+const normalizeDate = (date: string | null): string | null => {
+  if (!date) return null
+  if (date.includes("T")) return date.split("T")[0]
+  if (date.includes("/")) {
+    const [day, month, year] = date.split("/")
+    return `${year}-${month}-${day}`
+  }
+  return date
+}
+
+const expandRange = (start: string, end: string): string[] => {
+  const s = new Date(start)
+  const e = new Date(end)
+  const out: string[] = []
+  const cur = new Date(s)
+
+  while (cur <= e) {
+    out.push(cur.toISOString().split("T")[0])
+    cur.setDate(cur.getDate() + 1)
+  }
+  return out
+}
+
+const buildContinuousRanges = (dates: string[]) => {
+  if (!dates.length) return []
+  const result: { start: string; end: string }[] = []
+  let start = dates[0]
+  let prev = dates[0]
+
+  for (let i = 1; i < dates.length; i++) {
+    const diff =
+      (new Date(dates[i]).getTime() - new Date(prev).getTime()) / 86400000
+
+    if (diff === 1) {
+      prev = dates[i]
+    } else {
+      result.push({ start, end: prev })
+      start = dates[i]
+      prev = dates[i]
+    }
+  }
+
+  result.push({ start, end: prev })
+  return result
+}
+
+
+
+
+
+
 export default function HomePage() {
   const [ptoRecords, setPtoRecords] = useState<PTORecord[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -339,6 +394,55 @@ export default function HomePage() {
     const interval = setInterval(loadData, 5 * 60 * 1000)
     return () => clearInterval(interval)
   }, [])
+
+
+
+
+const currentMonth = formatDate(new Date(), "yyyy-MM")
+
+const ptoTable = useMemo(() => {
+  const byEmp: any = {}
+
+  ptoRecords.forEach(p => {
+    if (!p.is_pto) return
+    if (p.status === "rejected") return
+
+    const d = normalizeDate(p.date)
+    if (!d) return
+
+    const key = p.employee_name
+    byEmp[key] ||= []
+    byEmp[key].push({
+      date: d,
+      status: p.status === "approved" ? "Approved" : "Pending",
+    })
+  })
+
+  return Object.entries(byEmp).map(([name, items]: any) => {
+    const sorted = items.sort((a: any, b: any) =>
+      a.date.localeCompare(b.date)
+    )
+    const ranges = buildContinuousRanges(sorted.map((x: any) => x.date))
+
+    return {
+      name,
+      ranges: ranges.map((r: any) => ({
+        ...r,
+        status: sorted.some(
+          (x: any) => x.date >= r.start && x.date <= r.end && x.status === "Pending"
+        )
+          ? "Pending"
+          : "Approved",
+      })),
+    }
+  })
+}, [ptoRecords])
+
+
+
+
+
+
 
   const handleWelcomeComplete = () => {
     setShowWelcome(false)
@@ -445,7 +549,7 @@ export default function HomePage() {
     
 
  <div className="p-6 bg-gray-800 min-h-screen">
-    <Tabs defaultValue="calendar">
+    <Tabs defaultValue="overview">
 
       {/* TAB HEADER */}
       <TabsList className="mb-6 bg-gray-900">
@@ -454,19 +558,51 @@ export default function HomePage() {
       </TabsList>
 
       {/* OVERVIEW TAB (EMPTY PLACEHOLDER) */}
-      <TabsContent value="overview">
-        <Card className="bg-gray-900 border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-white">Overview</CardTitle>
-            <CardDescription className="text-gray-400">
-              Summary widgets can be added here later
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-gray-300">
-            No content yet.
-          </CardContent>
-        </Card>
-      </TabsContent>
+    <TabsContent value="overview" className="space-y-6">
+
+      {/* UPCOMING EVENTS */}
+      <Card className="bg-gray-900 border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-white">Upcoming Events</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-gray-300">
+          {upcomingEvents.length === 0 ? (
+            <p>No upcoming events</p>
+          ) : (
+            upcomingEvents.map(ev => (
+              <div key={ev.id} className="flex justify-between">
+                <span>{ev.employee_name}</span>
+                <span>{formatDate(parseISODate(ev.date), "MMM dd")}</span>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      {/* PTO SUMMARY */}
+      <Card className="bg-gray-900 border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-white">Paid Time Off</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {ptoTable.length === 0 ? (
+            <p className="text-gray-400">No PTO records</p>
+          ) : (
+            ptoTable.map(emp => (
+              <div key={emp.name}>
+                <p className="font-semibold text-white">{emp.name}</p>
+                {emp.ranges.map((r: any, i: number) => (
+                  <p key={i} className="text-sm text-gray-300">
+                    • {r.start} → {r.end} ({r.status})
+                  </p>
+                ))}
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+    </TabsContent>
 
       {/* 🔥 CALENDAR TAB — YOUR EXISTING CODE STARTS HERE 🔥 */}
       <TabsContent value="calendar">
