@@ -451,18 +451,21 @@ export default function HomePage() {
 
       if (user) {
         const { data, error } = await supabase
-          .from("employees")
+          .from("user_roles")
           .select("role")
-          .eq("id", user.id)
+          .eq("user_id", user.id)
           .single()
 
-        if (error) {
-          console.error("Failed to load user role:", error)
-          setUserRole("employee")
-        } else {
-          setUserRole(data?.role ?? "employee")
-        }
+      if (error) {
+        console.error("ROLE LOAD FAILED:", error)
+        return
       }
+
+      setUserRole(
+        data?.role?.toLowerCase() === "manager"
+          ? "manager"
+          : "employee"
+      )}
     } catch (err) {
       console.error("Init error:", err)
     }
