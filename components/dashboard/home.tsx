@@ -436,6 +436,67 @@ export default function HomePage() {
 
 
   
+  type PtoRange = {
+    start: string
+    end: string
+    status: "Pending" | "Approved"
+  }
+
+  type PtoEmployeeBlock = {
+    name: string
+    ranges: PtoRange[]
+  }
+
+  const buildPtoTable = (
+    records: PTORecord[],
+    isPaid: boolean
+  ): PtoEmployeeBlock[] => {
+    const byEmp: Record<string, { date: string; status: "Pending" | "Approved" }[]> = {}
+
+    records.forEach(p => {
+      if (p.is_pto !== isPaid) return
+      if (p.status === "rejected") return
+
+      const d = normalizeDate(p.date)
+      if (!d) return
+
+      const key = p.employee_name
+      byEmp[key] ||= []
+      byEmp[key].push({
+        date: d,
+        status: p.status === "approved" ? "Approved" : "Pending",
+      })
+    })
+
+    return Object.entries(byEmp).map(([name, items]) => {
+      // ✅ sorted is defined HERE
+      const sorted = items.sort((a, b) => a.date.localeCompare(b.date))
+
+      const ranges: PtoRange[] = buildContinuousRanges(
+        sorted.map(x => x.date)
+      ).map(r => {
+        // ✅ status calculation must live here
+        const status: "Pending" | "Approved" =
+          sorted.some(
+            x =>
+              x.date >= r.start &&
+              x.date <= r.end &&
+              x.status === "Pending"
+          )
+            ? "Pending"
+            : "Approved"
+
+        return {
+          start: r.start,
+          end: r.end,
+          status,
+        }
+      })
+
+      return { name, ranges }
+    })
+  }
+
   
 
   useEffect(() => {
@@ -445,53 +506,15 @@ export default function HomePage() {
     return () => clearInterval(interval)
   }, [])
 
+const paidPtoTable = useMemo(
+  () => buildPtoTable(ptoRecords, true),
+  [ptoRecords]
+)
 
-const paidPtoTable = useMemo(() => {
-  const byEmp: Record<string, string[]> = {}
-
-  ptoRecords.forEach(p => {
-    if (!p.is_pto) return
-    if (p.status === "rejected") return
-
-    const start = normalizeDate(p.date)
-    if (!start) return
-
-    // 🔑 Month gate (single-day PTO works too)
-    if (!rangeIntersectsMonth(start, start, selectedMonthKey)) return
-
-    byEmp[p.employee_name] ||= []
-    byEmp[p.employee_name].push(start)
-  })
-
-  return Object.entries(byEmp).map(([name, dates]) => ({
-    name,
-    ranges: buildContinuousRanges(dates.sort())
-  }))
-}, [ptoRecords, selectedMonthKey])
-
-const unpaidPtoTable = useMemo(() => {
-  const byEmp: Record<string, string[]> = {}
-
-  ptoRecords.forEach(p => {
-    if (p.is_pto) return
-    if (p.status === "rejected") return
-
-    const start = normalizeDate(p.date)
-    if (!start) return
-
-    // 🔑 Month gate
-    if (!rangeIntersectsMonth(start, start, selectedMonthKey)) return
-
-    byEmp[p.employee_name] ||= []
-    byEmp[p.employee_name].push(start)
-  })
-
-  return Object.entries(byEmp).map(([name, dates]) => ({
-    name,
-    ranges: buildContinuousRanges(dates.sort())
-  }))
-}, [ptoRecords, selectedMonthKey])
-
+const unpaidPtoTable = useMemo(
+  () => buildPtoTable(ptoRecords, false),
+  [ptoRecords]
+)
 
 const monthlyExtractions = useMemo(() => {
   return extractions.filter(e => {
