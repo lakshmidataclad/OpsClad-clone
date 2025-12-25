@@ -381,6 +381,21 @@ export default function HomePage() {
 
   const selectedMonthKey = formatDate(selectedMonth, "yyyy-MM")
   
+
+  const extractionHasMonthData = (
+    extraction: any,
+    selectedMonthKey: string
+  ): boolean => {
+    const entries = parseExtractedEntries(extraction.new_extracted_entries)
+
+    return entries.some((e: any) => {
+      const iso = normalizeMDY(e.date)
+      return iso?.startsWith(selectedMonthKey)
+    })
+  }
+
+
+
   const loadData = async () => {
     try {
       setLoading(true)
@@ -555,6 +570,13 @@ const extractionSummary = useMemo(() => {
   })
 
   return { total, pto, holiday, work }
+}, [extractions, selectedMonthKey])
+
+
+const extractionJobsForMonth = useMemo(() => {
+  return extractions.filter(ex =>
+    extractionHasMonthData(ex, selectedMonthKey)
+  )
 }, [extractions, selectedMonthKey])
 
 
@@ -823,18 +845,62 @@ const extractionSummary = useMemo(() => {
         </CardHeader>
 
         <CardContent>
-          {extractionSummary.total === 0 ? (
+          {extractionJobsForMonth.length === 0 ? (
             <p className="text-gray-400">
               No extraction records for this month
             </p>
           ) : (
-            <ul className="space-y-1 text-gray-300">
-              <li>Total entries: {extractionSummary.total}</li>
-              <li>PTO: {extractionSummary.pto}</li>
-              <li>Holidays: {extractionSummary.holiday}</li>
-              <li>Work days: {extractionSummary.work}</li>
-            </ul>
+            extractionJobsForMonth.map((ex, idx) => (
+              <div
+                key={idx}
+                className="grid grid-cols-1 md:grid-cols-5 gap-3 border-b border-gray-700 pb-3"
+              >
+                <div>
+                  <p className="text-gray-400">Last Extracted</p>
+                  <p className="text-white">
+                    {formatDate(
+                      parseISODate(
+                        // normalize timestamp just in case
+                        ex.created_at.includes("T")
+                          ? ex.created_at
+                          : ex.created_at.replace(" ", "T")
+                      ),
+                      "dd MMM yyyy"
+                    )}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-gray-400">Processed</p>
+                  <p className="text-white">
+                    {ex.total_entries_processed ?? 0}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-gray-400">Duplicates Skipped</p>
+                  <p className="text-white">
+                    {ex.duplicate_entries_skipped ?? 0}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-gray-400">Search Method</p>
+                  <p className="text-white">
+                    {ex.search_method ?? "-"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-gray-400">Extracted By</p>
+                  <p className="text-white">
+                    {ex.extracted_by ?? "-"}
+                  </p>
+                </div>
+              </div>
+            ))
           )}
+
 
         </CardContent>
       </Card>
