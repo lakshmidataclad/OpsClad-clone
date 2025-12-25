@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -55,6 +55,7 @@ interface SelectedDateInfo {
   holidays: HolidayRecord[]
 
 }
+
 
 
 // Utility functions for date handling
@@ -130,24 +131,27 @@ const rangeIntersectsMonth = (
 
 // Typing animation component
 const TypingWelcome = ({ employeeName, onComplete }: { employeeName: string, onComplete: () => void }) => {
+  const hasRunRef = useRef(false)
   const [displayedText, setDisplayedText] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
   const fullText = `Welcome to OpsClad!`
   
   useEffect(() => {
+    if (hasRunRef.current) return
+    hasRunRef.current = true
+
     if (currentIndex < fullText.length) {
       const timeout = setTimeout(() => {
         setDisplayedText(prev => prev + fullText[currentIndex])
         setCurrentIndex(prev => prev + 1)
-      }, 50) // Typing speed - adjust as needed
-      
+      }, 50)
+
       return () => clearTimeout(timeout)
     } else {
-      // Wait 2 seconds after typing is complete, then fade out
       const fadeTimeout = setTimeout(() => {
         onComplete()
       }, 2000)
-      
+
       return () => clearTimeout(fadeTimeout)
     }
   }, [currentIndex, fullText, onComplete])
@@ -305,19 +309,10 @@ const parseExtractedEntries = (raw: string | null) => {
 
 const normalizeMDY = (date: string): string | null => {
   if (!date) return null
-
-  // MM/DD/YYYY
   if (date.includes("/")) {
     const [m, d, y] = date.split("/")
-    if (!m || !d || !y) return null
     return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
   }
-
-  // Already ISO
-  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return date
-  }
-
   return null
 }
 
@@ -512,30 +507,30 @@ const extractionHasMonthData = (
       })
     })
 
-    return Object.entries(byEmp).map(([name, items]) => {
-      const sorted = items.sort((a, b) => a.date.localeCompare(b.date))
+    return Object.entries(byEmp)
+      .map(([name, items]) => {
+        const sorted = items.sort((a, b) => a.date.localeCompare(b.date))
 
-      const ranges: PtoRange[] = buildContinuousRanges(
-        sorted.map(x => x.date)
-      )
-        // 🔥 ADD THIS FILTER
-        .filter(r => rangeIntersectsMonth(r.start, r.end, monthKey))
-        .map(r => {
-          const status: "Pending" | "Approved" =
-            sorted.some(
-              x =>
-                x.date >= r.start &&
-                x.date <= r.end &&
-                x.status === "Pending"
-            )
-              ? "Pending"
-              : "Approved"
+        const ranges = buildContinuousRanges(sorted.map(x => x.date))
+          .filter(r => rangeIntersectsMonth(r.start, r.end, monthKey))
+          .map(r => {
+            const status: "Pending" | "Approved" =
+              sorted.some(
+                x =>
+                  x.date >= r.start &&
+                  x.date <= r.end &&
+                  x.status === "Pending"
+              )
+                ? "Pending"
+                : "Approved"
 
-          return { ...r, status }
-        })
+            return { ...r, status }
+          })
 
-      return { name, ranges }
-    })
+        return { name, ranges }
+      })
+      // 🔥 THIS LINE FIXES THE BUG
+      .filter(emp => emp.ranges.length > 0)
   }
 
   
@@ -564,6 +559,7 @@ const unpaidPtoTable = useMemo(
   () => buildPtoTable(ptoRecords, false, selectedMonthKey),
   [ptoRecords, selectedMonthKey]
 )
+
 const extractionSummary = useMemo(() => {
   let total = 0
   let pto = 0
@@ -579,7 +575,6 @@ const extractionSummary = useMemo(() => {
       if (!iso.startsWith(selectedMonthKey)) return
 
       total++
-
       if (e.activity === "PTO") pto++
       else if (e.activity === "HOLIDAY") holiday++
       else if (e.activity === "WORK") work++
@@ -853,7 +848,7 @@ const handleWelcomeComplete = () => {
               No extraction records for this month
             </p>
           ) : (
-            <ul className="space-y-1 text-gray-300">
+            <ul className="text-gray-300 space-y-1">
               <li>Total entries: {extractionSummary.total}</li>
               <li>PTO: {extractionSummary.pto}</li>
               <li>Holidays: {extractionSummary.holiday}</li>
