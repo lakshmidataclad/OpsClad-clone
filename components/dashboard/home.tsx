@@ -294,6 +294,21 @@ const normalizeDate = (date: string | null): string | null => {
   return null
 }
 
+const parseExtractedEntries = (raw: string | null) => {
+  if (!raw) return []
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return []
+  }
+}
+
+const normalizeMDY = (date: string): string | null => {
+  if (!date.includes("/")) return null
+  const [m, d, y] = date.split("/")
+  return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
+}
+
 const formatISOToDDMMYYYY = (iso: string) => {
   const [y, m, d] = iso.split("-")
   return `${d}-${m}-${y}`
@@ -416,7 +431,8 @@ export default function HomePage() {
           total_entries_processed,
           duplicate_entries_skipped,
           search_method,
-          extracted_by
+          extracted_by,
+          new_extracted_entries
         `)
         .order("created_at", { ascending: false })
 
@@ -516,11 +532,29 @@ const unpaidPtoTable = useMemo(
   [ptoRecords]
 )
 
-const monthlyExtractions = useMemo(() => {
-  return extractions.filter(e => {
-    if (!e.created_at) return false
-    return e.created_at.startsWith(selectedMonthKey)
+const extractionSummary = useMemo(() => {
+  let total = 0
+  let pto = 0
+  let holiday = 0
+  let work = 0
+
+  extractions.forEach(row => {
+    const entries = parseExtractedEntries(row.new_extracted_entries)
+
+    entries.forEach((e: any) => {
+      const iso = normalizeMDY(e.date)
+      if (!iso) return
+      if (!iso.startsWith(selectedMonthKey)) return
+
+      total++
+
+      if (e.activity === "PTO") pto++
+      else if (e.activity === "HOLIDAY") holiday++
+      else if (e.activity === "WORK") work++
+    })
   })
+
+  return { total, pto, holiday, work }
 }, [extractions, selectedMonthKey])
 
 
@@ -789,55 +823,19 @@ const monthlyExtractions = useMemo(() => {
         </CardHeader>
 
         <CardContent>
-          {monthlyExtractions.length === 0 ? (
+          {extractionSummary.total === 0 ? (
             <p className="text-gray-400">
               No extraction records for this month
             </p>
           ) : (
-            <div className="space-y-3 text-sm text-gray-300">
-              {monthlyExtractions.map((ex, idx) => (
-                <div
-                  key={idx}
-                  className="grid grid-cols-1 md:grid-cols-5 gap-3 border-b border-gray-700 pb-3"
-                >
-                  <div>
-                    <p className="text-gray-400">Last Extracted</p>
-                    <p className="text-white">
-                      {formatDate(parseISODate(ex.created_at), "dd MMM yyyy")}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-gray-400">Processed</p>
-                    <p className="text-white">
-                      {ex.total_entries_processed ?? 0}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-gray-400">Duplicates Skipped</p>
-                    <p className="text-white">
-                      {ex.duplicate_entries_skipped ?? 0}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-gray-400">Search Method</p>
-                    <p className="text-white">
-                      {ex.search_method ?? "-"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-gray-400">Extracted By</p>
-                    <p className="text-white">
-                      {ex.extracted_by ?? "-"}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ul className="space-y-1 text-gray-300">
+              <li>Total entries: {extractionSummary.total}</li>
+              <li>PTO: {extractionSummary.pto}</li>
+              <li>Holidays: {extractionSummary.holiday}</li>
+              <li>Work days: {extractionSummary.work}</li>
+            </ul>
           )}
+
         </CardContent>
       </Card>
 
