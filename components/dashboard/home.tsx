@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Users, Clock, MapPin, ChevronLeft, ChevronRight, User, PartyPopper, X } from "lucide-react"
+import { Calendar, ChevronLeft, ChevronRight, User, PartyPopper, X } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 import {
@@ -435,104 +435,6 @@ export default function HomePage() {
   }, [])
 
 
-const ptoTable = useMemo(() => {
-  const byEmp: any = {}
-
-  ptoRecords.forEach(p => {
-    if (!p.is_pto) return
-    if (p.status === "rejected") return
-
-    const d = normalizeDate(p.date)
-    if (!d) return
-
-    const key = p.employee_name
-    byEmp[key] ||= []
-    byEmp[key].push({
-      date: d,
-      status: p.status === "approved" ? "Approved" : "Pending",
-    })
-  })
-
-
-  
-
-return Object.entries(byEmp)
-  .map(([name, items]: any) => {
-    const sorted = items.sort((a: any, b: any) =>
-      a.date.localeCompare(b.date)
-    )
-
-  const ranges = buildContinuousRanges(sorted.map((x: any) => x.date))
-    .map(r => ({
-      ...r,
-      status: sorted.some(
-        (x: any) =>
-          x.date >= r.start &&
-          x.date <= r.end &&
-          x.status === "Pending"
-      )
-        ? "Pending"
-        : "Approved",
-    }))
-    return {
-      name,
-      ranges,
-    }
-  })
-  // ✅ KEY FIX: remove employees with no PTO in this month
-}, [ptoRecords, selectedMonthKey])
-
-
-const paidPtoTable = useMemo(() => {
-  const byEmp: any = {}
-
-  ptoRecords.forEach(p => {
-    if (!p.is_pto) return
-    if (p.status === "rejected") return
-
-    const d = normalizeDate(p.date)
-    if (!d) return
-
-    byEmp[p.employee_name] ||= []
-    byEmp[p.employee_name].push({
-      date: d,
-      status: p.status === "approved" ? "Approved" : "Pending",
-    })
-  })
-
-  return Object.entries(byEmp).map(([name, items]: any) => ({
-    name,
-    ranges: buildContinuousRanges(
-      items.sort((a: any, b: any) => a.date.localeCompare(b.date))
-           .map((x: any) => x.date)
-    )
-  }))
-}, [ptoRecords])
-
-
-const unpaidPtoTable = useMemo(() => {
-  const byEmp: any = {}
-
-  ptoRecords.forEach(p => {
-    if (p.is_pto) return              // 🔴 unpaid only
-    if (p.status === "rejected") return
-
-    const d = normalizeDate(p.date)
-    if (!d) return
-
-    byEmp[p.employee_name] ||= []
-    byEmp[p.employee_name].push(d)
-  })
-
-  return Object.entries(byEmp).map(([name, dates]: any) => ({
-    name,
-    ranges: buildContinuousRanges(dates.sort())
-  }))
-}, [ptoRecords])
-
-
-
-
   const handleWelcomeComplete = () => {
     setShowWelcome(false)
     // Small delay before showing content for smooth transition
@@ -693,246 +595,201 @@ const unpaidPtoTable = useMemo(() => {
       </TabsList>
 
       {/* OVERVIEW TAB */}
-    <TabsContent value="overview" className="space-y-6">
+      <TabsContent value="overview" className="space-y-6">
 
+        {/* Month Selector */}
+        <Card className="bg-gray-900 border-gray-700">
+          <CardContent className="flex items-center justify-between py-4">
+            <Button
+              variant="ghost"
+              onClick={() => changeMonth("prev")}
+              className="text-gray-400 hover:text-white"
+            >
+              ◀
+            </Button>
 
-      <Card className="bg-gray-900 border-gray-700">
-        <CardContent className="flex items-center justify-between py-4">
-          <Button
-            variant="ghost"
-            onClick={() => changeMonth("prev")}
-            className="text-gray-400 hover:text-white"
-          >
-            ◀
-          </Button>
+            <div className="text-white font-semibold text-lg">
+              {formatDate(selectedMonth, "MMMM yyyy")}
+            </div>
 
-          <div className="text-white font-semibold text-lg">
-            {formatDate(selectedMonth, "MMMM yyyy")}
-          </div>
+            <Button
+              variant="ghost"
+              onClick={() => changeMonth("next")}
+              className="text-gray-400 hover:text-white"
+            >
+              ▶
+            </Button>
+          </CardContent>
+        </Card>
 
-          <Button
-            variant="ghost"
-            onClick={() => changeMonth("next")}
-            className="text-gray-400 hover:text-white"
-          >
-            ▶
-          </Button>
-        </CardContent>
-      </Card>
-
-
-      {/* UPCOMING EVENTS */}
-      <Card className="bg-gray-900 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white">Upcoming Events</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-gray-300">
-          {upcomingEvents.length === 0 ? (
-            <p>No upcoming events this month</p>
-          ) : (
-            upcomingEvents.map(ev => (
-              <div key={ev.id} className="flex justify-between">
-                <span>{ev.title}</span>
-                <span>{formatDate(parseISODate(ev.date), "MMM dd")}</span>
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
-
-
-      {/* PTO SUMMARY */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        {/* PAID PTO */}
+          {/* Anouncements */}
         <Card className="bg-gray-900 border-gray-700">
           <CardHeader>
-            <CardTitle className="text-white">Paid Time Off</CardTitle>
+            <CardTitle className="text-white">Anouncements</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 max-h-[720px] overflow-y-auto pr-2">
-            {paidPtoTable.length === 0 ? (
-              <p className="text-gray-400">No paid PTO</p>
+          <CardContent className="space-y-3 text-gray-300">
+          </CardContent>
+        </Card>
+
+        {/* Upcoming Events */}
+        <Card className="bg-gray-900 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-white">Upcoming Events</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-gray-300">
+            {upcomingEvents.length === 0 ? (
+              <p>No upcoming events this month</p>
             ) : (
-              paidPtoTable.map(emp => (
-                <div key={emp.name}>
-                  <p className="font-semibold text-white">{emp.name}</p>
-                  {emp.ranges.map((r: any, i: number) => (
-                    <p key={i} className="text-sm text-gray-300">
-                      • {formatISOToDDMMYYYY(r.start)} → {formatISOToDDMMYYYY(r.end)}
-                    </p>
-                  ))}
+              upcomingEvents.map(ev => (
+                <div key={ev.id} className="flex justify-between">
+                  <span>{ev.title}</span>
+                  <span>{formatDate(parseISODate(ev.date), "MMM dd")}</span>
                 </div>
               ))
             )}
           </CardContent>
         </Card>
+      </TabsContent>
 
-        {/* UNPAID PTO */}
-        <Card className="bg-gray-900 border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-white">Unpaid Time Off</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 max-h-[720px] overflow-y-auto pr-2">
-            {unpaidPtoTable.length === 0 ? (
-              <p className="text-gray-400">No unpaid leave</p>
-            ) : (
-              unpaidPtoTable.map(emp => (
-                <div key={emp.name}>
-                  <p className="font-semibold text-white">{emp.name}</p>
-                  {emp.ranges.map((r: any, i: number) => (
-                    <p key={i} className="text-sm text-gray-300">
-                      • {formatISOToDDMMYYYY(r.start)} → {formatISOToDDMMYYYY(r.end)}
-                    </p>
-                  ))}
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-      </div>
-
-
-    </TabsContent>
 
       {/* 🔥 CALENDAR TAB — YOUR EXISTING CODE STARTS HERE 🔥 */}
       <TabsContent value="calendar">
-    <div className="p-6 space-y-6 bg-gray-800 min-h-screen animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Calendar Overview</h1>
+      <div className="p-6 space-y-6 bg-gray-800 min-h-screen animate-in fade-in duration-500">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Calendar Overview</h1>
+          </div>
         </div>
-      </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendar */}
-        <div className="lg:col-span-4">
-          <Card className="border-gray-700 bg-gray-900">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  {formatDate(currentDate, 'MMMM yyyy')}
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigateMonth('prev')}
-                    className="border-gray-500 text-gray-500 hover:bg-gray-950"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentDate(new Date())}
-                    className="border-gray-500 text-gray-500 hover:bg-gray-950"
-                  >
-                    Today
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigateMonth('next')}
-                    className="border-gray-500 text-gray-500 hover:bg-gray-950"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-              <CardDescription className="text-gray-400">
-                Click on any date to view detailed activity
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-7 gap-1 mb-4">
-                {weekdays.map(day => (
-                  <div key={day} className="p-2 text-center font-medium text-gray-500 text-sm">
-                    {day}
-                  </div>
-                ))}
-              </div>
-              
-              <div className="grid grid-cols-7 gap-1">
-                {calendarDays.map((calendarDay, index) => {
-                  const totalEmployees = getTotalEmployeesOnLeave(calendarDay.date)
-                  const hasLeave = calendarDay.ptoRecords.length > 0
-                  const hasBirthdays = calendarDay.birthdays.length > 0
-                  const hasHolidays = calendarDay.holidays.length > 0
-                  const hasActivity = hasLeave || hasBirthdays || hasHolidays
-                  const isCurrentDay = isToday(calendarDay.date)
-                  
-                  return (
-                    <div
-                      key={index}
-                      onClick={() => hasActivity && handleDateClick(calendarDay)}
-                      className={`
-                        relative min-h-[80px] p-2 border border-gray-200 rounded-lg transition-all duration-200
-                        ${!calendarDay.isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white text-black'}
-                        ${isCurrentDay ? 'ring-2 ring-blue-500 bg-blue-50' : ''}
-                        ${hasLeave ? 'bg-green-50 border-green-200' : ''}
-                        ${hasBirthdays ? 'bg-yellow-50 border-yellow-200' : ''}
-                        ${hasHolidays ? 'bg-orange-50 border-orange-200' : ''}
-                        ${hasActivity ? 'cursor-pointer hover:shadow-md hover:scale-105' : ''}
-                      `}
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Calendar */}
+          <div className="lg:col-span-4">
+            <Card className="border-gray-700 bg-gray-900">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    {formatDate(currentDate, 'MMMM yyyy')}
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigateMonth('prev')}
+                      className="border-gray-500 text-gray-500 hover:bg-gray-950"
                     >
-                      <div className="text-sm font-medium">
-                        {calendarDay.date.getDate()}
-                      </div>
-                      
-                      <div className="mt-1 space-y-1">
-                        {/* Birthday indicator */}
-                        {hasBirthdays && (
-                          <div className="flex items-center gap-1">
-                            <PartyPopper className="w-3 h-3 text-yellow-600" />
-                            <Badge 
-                              variant="outline" 
-                              className="text-xs border-yellow-500 text-yellow-600 bg-yellow-100 px-1 py-0"
-                            >
-                              {calendarDay.birthdays.length} Birthday
-                            </Badge>
-                          </div>
-                        )}
-
-                        {hasHolidays && (
-                          <div className="flex items-center gap-1">
-                            <PartyPopper className="w-3 h-3 text-orange-600" />
-                            <Badge 
-                              variant="outline" 
-                              className="text-xs border-orange-500 text-orange-600 bg-orange-100 px-1 py-0"
-                            >
-                              {calendarDay.holidays.length} Holiday
-                            </Badge>
-                          </div>
-                        )}
-                        
-                        {/* Leave indicator */}
-                        {hasLeave && (
-                          <Badge 
-                            variant="outline" 
-                            className="text-xs border-green-500 text-green-600 bg-green-100"
-                          >
-                            {totalEmployees} on leave
-                          </Badge>
-                        )}
-                      </div>
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentDate(new Date())}
+                      className="border-gray-500 text-gray-500 hover:bg-gray-950"
+                    >
+                      Today
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigateMonth('next')}
+                      className="border-gray-500 text-gray-500 hover:bg-gray-950"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <CardDescription className="text-gray-400">
+                  Click on any date to view detailed activity
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-7 gap-1 mb-4">
+                  {weekdays.map(day => (
+                    <div key={day} className="p-2 text-center font-medium text-gray-500 text-sm">
+                      {day}
                     </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+                  ))}
+                </div>
+                
+                <div className="grid grid-cols-7 gap-1">
+                  {calendarDays.map((calendarDay, index) => {
+                    const totalEmployees = getTotalEmployeesOnLeave(calendarDay.date)
+                    const hasLeave = calendarDay.ptoRecords.length > 0
+                    const hasBirthdays = calendarDay.birthdays.length > 0
+                    const hasHolidays = calendarDay.holidays.length > 0
+                    const hasActivity = hasLeave || hasBirthdays || hasHolidays
+                    const isCurrentDay = isToday(calendarDay.date)
+                    
+                    return (
+                      <div
+                        key={index}
+                        onClick={() => hasActivity && handleDateClick(calendarDay)}
+                        className={`
+                          relative min-h-[80px] p-2 border border-gray-200 rounded-lg transition-all duration-200
+                          ${!calendarDay.isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white text-black'}
+                          ${isCurrentDay ? 'ring-2 ring-blue-500 bg-blue-50' : ''}
+                          ${hasLeave ? 'bg-green-50 border-green-200' : ''}
+                          ${hasBirthdays ? 'bg-yellow-50 border-yellow-200' : ''}
+                          ${hasHolidays ? 'bg-orange-50 border-orange-200' : ''}
+                          ${hasActivity ? 'cursor-pointer hover:shadow-md hover:scale-105' : ''}
+                        `}
+                      >
+                        <div className="text-sm font-medium">
+                          {calendarDay.date.getDate()}
+                        </div>
+                        
+                        <div className="mt-1 space-y-1">
+                          {/* Birthday indicator */}
+                          {hasBirthdays && (
+                            <div className="flex items-center gap-1">
+                              <PartyPopper className="w-3 h-3 text-yellow-600" />
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs border-yellow-500 text-yellow-600 bg-yellow-100 px-1 py-0"
+                              >
+                                {calendarDay.birthdays.length} Birthday
+                              </Badge>
+                            </div>
+                          )}
 
-      {/* Date Details Modal */}
-      <DateDetailsModal 
-        selectedDate={selectedDate} 
-        onClose={() => setSelectedDate(null)} 
-      />
+                          {hasHolidays && (
+                            <div className="flex items-center gap-1">
+                              <PartyPopper className="w-3 h-3 text-orange-600" />
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs border-orange-500 text-orange-600 bg-orange-100 px-1 py-0"
+                              >
+                                {calendarDay.holidays.length} Holiday
+                              </Badge>
+                            </div>
+                          )}
+                          
+                          {/* Leave indicator */}
+                          {hasLeave && (
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs border-green-500 text-green-600 bg-green-100"
+                            >
+                              {totalEmployees} on leave
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+          {/* Date Details Modal */}
+          <DateDetailsModal 
+            selectedDate={selectedDate} 
+            onClose={() => setSelectedDate(null)} 
+          />
         </div>
       </TabsContent>
     </Tabs>
