@@ -362,7 +362,6 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showWelcome, setShowWelcome] = useState(true)
-  const [showContent, setShowContent] = useState(false)
   const [selectedDate, setSelectedDate] = useState<SelectedDateInfo | null>(null)
   const [extractions, setExtractions] = useState<any[]>([])
 
@@ -537,6 +536,14 @@ export default function HomePage() {
     return () => clearInterval(interval)
   }, [])
 
+
+  useEffect(() => {
+    const hasSeenWelcome = sessionStorage.getItem("opsclad-welcome")
+    if (hasSeenWelcome) {
+      setShowWelcome(false)
+    }
+  }, [])
+
 const paidPtoTable = useMemo(
   () => buildPtoTable(ptoRecords, true),
   [ptoRecords]
@@ -580,13 +587,10 @@ const extractionJobsForMonth = useMemo(() => {
 }, [extractions, selectedMonthKey])
 
 
-  const handleWelcomeComplete = () => {
-    setShowWelcome(false)
-    // Small delay before showing content for smooth transition
-    setTimeout(() => {
-      setShowContent(true)
-    }, 300)
-  }
+const handleWelcomeComplete = () => {
+  sessionStorage.setItem("opsclad-welcome", "true")
+  setShowWelcome(false)
+}
 
   const getBirthdaysForDate = (date: Date): Employee[] => {
     return employees.filter(employee => {
@@ -718,11 +722,6 @@ const extractionJobsForMonth = useMemo(() => {
   // Show welcome screen first
   if (showWelcome) {
     return <TypingWelcome employeeName='' onComplete={handleWelcomeComplete} />
-  }
-
-  // Show calendar content after welcome
-  if (!showContent) {
-    return <div className="bg-gray-800 min-h-screen" />
   }
 
   return (
