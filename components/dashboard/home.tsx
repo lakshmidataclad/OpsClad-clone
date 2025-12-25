@@ -428,46 +428,49 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    let interval: NodeJS.Timeout
+  let interval: number
 
-    const init = async () => {
-      try {
-        /* 🔹 Load dashboard data */
-        await loadData()
+  const init = async () => {
+    try {
+      /* 🔹 Load dashboard data */
+      await loadData()
 
-        /* 🔹 Load user role */
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
+      /* 🔹 Load user role */
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-        if (user) {
-          const { data, error } = await supabase
-            .from("employees")
-            .select("role")
-            .eq("id", user.id)
-            .single()
+      if (user) {
+        const { data, error } = await supabase
+          .from("employees")
+          .select("role")
+          .eq("id", user.id)
+          .single()
 
-          if (error) {
-            console.error("Failed to load user role:", error)
-            setUserRole("employee") // safe fallback
-          } else {
-            setUserRole(data?.role ?? "employee")
-          }
+        if (error) {
+          console.error("Failed to load user role:", error)
+          setUserRole("employee")
+        } else {
+          setUserRole(data?.role ?? "employee")
         }
-      } catch (err) {
-        console.error("Init error:", err)
       }
-
-      /* 🔁 Refresh dashboard data every 5 minutes */
-      interval = setInterval(loadData, 5 * 60 * 1000)
+    } catch (err) {
+      console.error("Init error:", err)
     }
 
-    init()
+    /* 🔁 Refresh dashboard data every 5 minutes */
+    interval = window.setInterval(loadData, 5 * 60 * 1000)
+  }
 
-    return () => {
-      if (interval) clearInterval(interval)
+  init()
+
+  return () => {
+    if (interval) {
+      clearInterval(interval)
     }
-  }, [])
+  }
+}, [])
+
 
 
 
