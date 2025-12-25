@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -55,7 +55,6 @@ interface SelectedDateInfo {
   holidays: HolidayRecord[]
 
 }
-
 
 
 // Utility functions for date handling
@@ -131,27 +130,24 @@ const rangeIntersectsMonth = (
 
 // Typing animation component
 const TypingWelcome = ({ employeeName, onComplete }: { employeeName: string, onComplete: () => void }) => {
-  const hasRunRef = useRef(false)
   const [displayedText, setDisplayedText] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
   const fullText = `Welcome to OpsClad!`
   
   useEffect(() => {
-    if (hasRunRef.current) return
-    hasRunRef.current = true
-
     if (currentIndex < fullText.length) {
       const timeout = setTimeout(() => {
         setDisplayedText(prev => prev + fullText[currentIndex])
         setCurrentIndex(prev => prev + 1)
-      }, 50)
-
+      }, 50) // Typing speed - adjust as needed
+      
       return () => clearTimeout(timeout)
     } else {
+      // Wait 2 seconds after typing is complete, then fade out
       const fadeTimeout = setTimeout(() => {
         onComplete()
       }, 2000)
-
+      
       return () => clearTimeout(fadeTimeout)
     }
   }, [currentIndex, fullText, onComplete])
@@ -308,12 +304,9 @@ const parseExtractedEntries = (raw: string | null) => {
 }
 
 const normalizeMDY = (date: string): string | null => {
-  if (!date) return null
-  if (date.includes("/")) {
-    const [m, d, y] = date.split("/")
-    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
-  }
-  return null
+  if (!date.includes("/")) return null
+  const [m, d, y] = date.split("/")
+  return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
 }
 
 const formatISOToDDMMYYYY = (iso: string) => {
@@ -388,18 +381,17 @@ export default function HomePage() {
   const selectedMonthKey = formatDate(selectedMonth, "yyyy-MM")
   
 
-const extractionHasMonthData = (
-  extraction: any,
-  selectedMonthKey: string
-): boolean => {
-  const entries = parseExtractedEntries(extraction.new_extracted_entries)
-  if (!Array.isArray(entries)) return false
+  const extractionHasMonthData = (
+    extraction: any,
+    selectedMonthKey: string
+  ): boolean => {
+    const entries = parseExtractedEntries(extraction.new_extracted_entries)
 
-  return entries.some(e => {
-    const iso = normalizeMDY(e.date)
-    return iso?.startsWith(selectedMonthKey)
-  })
-}
+    return entries.some((e: any) => {
+      const iso = normalizeMDY(e.date)
+      return iso?.startsWith(selectedMonthKey)
+    })
+  }
 
 
 
@@ -487,8 +479,7 @@ const extractionHasMonthData = (
 
   const buildPtoTable = (
     records: PTORecord[],
-    isPaid: boolean,
-    monthKey: string
+    isPaid: boolean
   ): PtoEmployeeBlock[] => {
     const byEmp: Record<string, { date: string; status: "Pending" | "Approved" }[]> = {}
 
@@ -507,30 +498,33 @@ const extractionHasMonthData = (
       })
     })
 
-    return Object.entries(byEmp)
-      .map(([name, items]) => {
-        const sorted = items.sort((a, b) => a.date.localeCompare(b.date))
+    return Object.entries(byEmp).map(([name, items]) => {
+      // ✅ sorted is defined HERE
+      const sorted = items.sort((a, b) => a.date.localeCompare(b.date))
 
-        const ranges = buildContinuousRanges(sorted.map(x => x.date))
-          .filter(r => rangeIntersectsMonth(r.start, r.end, monthKey))
-          .map(r => {
-            const status: "Pending" | "Approved" =
-              sorted.some(
-                x =>
-                  x.date >= r.start &&
-                  x.date <= r.end &&
-                  x.status === "Pending"
-              )
-                ? "Pending"
-                : "Approved"
+      const ranges: PtoRange[] = buildContinuousRanges(
+        sorted.map(x => x.date)
+      ).map(r => {
+        // ✅ status calculation must live here
+        const status: "Pending" | "Approved" =
+          sorted.some(
+            x =>
+              x.date >= r.start &&
+              x.date <= r.end &&
+              x.status === "Pending"
+          )
+            ? "Pending"
+            : "Approved"
 
-            return { ...r, status }
-          })
-
-        return { name, ranges }
+        return {
+          start: r.start,
+          end: r.end,
+          status,
+        }
       })
-      // 🔥 THIS LINE FIXES THE BUG
-      .filter(emp => emp.ranges.length > 0)
+
+      return { name, ranges }
+    })
   }
 
   
@@ -543,7 +537,7 @@ const extractionHasMonthData = (
   }, [])
 
 
-  useEffect(() => {
+    useEffect(() => {
     const hasSeenWelcome = sessionStorage.getItem("opsclad-welcome")
     if (hasSeenWelcome) {
       setShowWelcome(false)
@@ -551,13 +545,13 @@ const extractionHasMonthData = (
   }, [])
 
 const paidPtoTable = useMemo(
-  () => buildPtoTable(ptoRecords, true, selectedMonthKey),
-  [ptoRecords, selectedMonthKey]
+  () => buildPtoTable(ptoRecords, true),
+  [ptoRecords]
 )
 
 const unpaidPtoTable = useMemo(
-  () => buildPtoTable(ptoRecords, false, selectedMonthKey),
-  [ptoRecords, selectedMonthKey]
+  () => buildPtoTable(ptoRecords, false),
+  [ptoRecords]
 )
 
 const extractionSummary = useMemo(() => {
@@ -575,6 +569,7 @@ const extractionSummary = useMemo(() => {
       if (!iso.startsWith(selectedMonthKey)) return
 
       total++
+
       if (e.activity === "PTO") pto++
       else if (e.activity === "HOLIDAY") holiday++
       else if (e.activity === "WORK") work++
@@ -729,6 +724,10 @@ const handleWelcomeComplete = () => {
     return <TypingWelcome employeeName='' onComplete={handleWelcomeComplete} />
   }
 
+  if (showWelcome) {
+    return <TypingWelcome employeeName="" onComplete={handleWelcomeComplete} />
+  }
+
   return (
     
 
@@ -842,20 +841,11 @@ const handleWelcomeComplete = () => {
       </div>
 
       <Card className="bg-gray-900 border-gray-700">
-        <CardContent>
-          {extractionSummary.total === 0 ? (
-            <p className="text-gray-400">
-              No extraction records for this month
-            </p>
-          ) : (
-            <ul className="text-gray-300 space-y-1">
-              <li>Total entries: {extractionSummary.total}</li>
-              <li>PTO: {extractionSummary.pto}</li>
-              <li>Holidays: {extractionSummary.holiday}</li>
-              <li>Work days: {extractionSummary.work}</li>
-            </ul>
-          )}
-        </CardContent>
+        <CardHeader>
+          <CardTitle className="text-white">
+            Extraction Summary – {formatDate(selectedMonth, "MMMM yyyy")}
+          </CardTitle>
+        </CardHeader>
 
         <CardContent>
           {extractionJobsForMonth.length === 0 ? (
