@@ -428,11 +428,47 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    loadData()
-    // Refresh data every 5 minutes
-    const interval = setInterval(loadData, 5 * 60 * 1000)
-    return () => clearInterval(interval)
+    let interval: NodeJS.Timeout
+
+    const init = async () => {
+      try {
+        /* 🔹 Load dashboard data */
+        await loadData()
+
+        /* 🔹 Load user role */
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        if (user) {
+          const { data, error } = await supabase
+            .from("employees")
+            .select("role")
+            .eq("id", user.id)
+            .single()
+
+          if (error) {
+            console.error("Failed to load user role:", error)
+            setUserRole("employee") // safe fallback
+          } else {
+            setUserRole(data?.role ?? "employee")
+          }
+        }
+      } catch (err) {
+        console.error("Init error:", err)
+      }
+
+      /* 🔁 Refresh dashboard data every 5 minutes */
+      interval = setInterval(loadData, 5 * 60 * 1000)
+    }
+
+    init()
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
   }, [])
+
 
 
   const handleWelcomeComplete = () => {
@@ -465,9 +501,9 @@ export default function HomePage() {
   const handleDateClick = (calendarDay: CalendarDay) => {
     setSelectedDate({
       date: calendarDay.date,
-      ptoRecords: calendarDay.ptoRecords,
-      birthdays: calendarDay.birthdays,
-      holidays: calendarDay.holidays
+      ptoRecords: calendarDay.ptoRecords ?? [],
+      birthdays: calendarDay.birthdays ?? [],
+      holidays: calendarDay.holidays ?? []
     })
   }
 
@@ -494,7 +530,12 @@ export default function HomePage() {
     return days.map(day => ({
       date: day,
       isCurrentMonth: day.getMonth() === currentDate.getMonth(),
-      ptoRecords: ptoRecords.filter(record => isSameDay(parseISODate(record.date), day)),
+      ptoRecords: ptoRecords.filter(record => {
+        if (!record.date) return false
+        const normalized = normalizeDate(record.date)
+        if (!normalized) return false
+        return isSameDay(parseISODate(normalized), day)
+      }),      
       birthdays: getBirthdaysForDate(day),
       holidays: getHolidaysForDate(day)
     }))
@@ -598,15 +639,12 @@ export default function HomePage() {
           <Plus className="w-4 h-4 mr-1" />
           Add Announcement
         </Button>
-
           {userRole === "manager" && (
-            <Button>
-                <Plus className="w-4 h-4 mr-1" />
-            + Add Announcement
+            <Button size="sm">
+              <Plus className="w-4 h-4 mr-1" />
+              Add Announcement
             </Button>
           )}
-
-
       </div>
 
       {/* OVERVIEW TAB */}
