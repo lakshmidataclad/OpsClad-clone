@@ -304,9 +304,21 @@ const parseExtractedEntries = (raw: string | null) => {
 }
 
 const normalizeMDY = (date: string): string | null => {
-  if (!date.includes("/")) return null
-  const [m, d, y] = date.split("/")
-  return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
+  if (!date) return null
+
+  // MM/DD/YYYY
+  if (date.includes("/")) {
+    const [m, d, y] = date.split("/")
+    if (!m || !d || !y) return null
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
+  }
+
+  // Already ISO
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date
+  }
+
+  return null
 }
 
 const formatISOToDDMMYYYY = (iso: string) => {
@@ -381,17 +393,18 @@ export default function HomePage() {
   const selectedMonthKey = formatDate(selectedMonth, "yyyy-MM")
   
 
-  const extractionHasMonthData = (
-    extraction: any,
-    selectedMonthKey: string
-  ): boolean => {
-    const entries = parseExtractedEntries(extraction.new_extracted_entries)
+const extractionHasMonthData = (
+  extraction: any,
+  selectedMonthKey: string
+): boolean => {
+  const entries = parseExtractedEntries(extraction.new_extracted_entries)
+  if (!Array.isArray(entries)) return false
 
-    return entries.some((e: any) => {
-      const iso = normalizeMDY(e.date)
-      return iso?.startsWith(selectedMonthKey)
-    })
-  }
+  return entries.some(e => {
+    const iso = normalizeMDY(e.date)
+    return iso?.startsWith(selectedMonthKey)
+  })
+}
 
 
 
@@ -479,7 +492,8 @@ export default function HomePage() {
 
   const buildPtoTable = (
     records: PTORecord[],
-    isPaid: boolean
+    isPaid: boolean,
+    monthKey: string
   ): PtoEmployeeBlock[] => {
     const byEmp: Record<string, { date: string; status: "Pending" | "Approved" }[]> = {}
 
@@ -499,29 +513,26 @@ export default function HomePage() {
     })
 
     return Object.entries(byEmp).map(([name, items]) => {
-      // ✅ sorted is defined HERE
       const sorted = items.sort((a, b) => a.date.localeCompare(b.date))
 
       const ranges: PtoRange[] = buildContinuousRanges(
         sorted.map(x => x.date)
-      ).map(r => {
-        // ✅ status calculation must live here
-        const status: "Pending" | "Approved" =
-          sorted.some(
-            x =>
-              x.date >= r.start &&
-              x.date <= r.end &&
-              x.status === "Pending"
-          )
-            ? "Pending"
-            : "Approved"
+      )
+        // 🔥 ADD THIS FILTER
+        .filter(r => rangeIntersectsMonth(r.start, r.end, monthKey))
+        .map(r => {
+          const status: "Pending" | "Approved" =
+            sorted.some(
+              x =>
+                x.date >= r.start &&
+                x.date <= r.end &&
+                x.status === "Pending"
+            )
+              ? "Pending"
+              : "Approved"
 
-        return {
-          start: r.start,
-          end: r.end,
-          status,
-        }
-      })
+          return { ...r, status }
+        })
 
       return { name, ranges }
     })
@@ -545,15 +556,14 @@ export default function HomePage() {
   }, [])
 
 const paidPtoTable = useMemo(
-  () => buildPtoTable(ptoRecords, true),
-  [ptoRecords]
+  () => buildPtoTable(ptoRecords, true, selectedMonthKey),
+  [ptoRecords, selectedMonthKey]
 )
 
 const unpaidPtoTable = useMemo(
-  () => buildPtoTable(ptoRecords, false),
-  [ptoRecords]
+  () => buildPtoTable(ptoRecords, false, selectedMonthKey),
+  [ptoRecords, selectedMonthKey]
 )
-
 const extractionSummary = useMemo(() => {
   let total = 0
   let pto = 0
@@ -837,11 +847,20 @@ const handleWelcomeComplete = () => {
       </div>
 
       <Card className="bg-gray-900 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white">
-            Extraction Summary – {formatDate(selectedMonth, "MMMM yyyy")}
-          </CardTitle>
-        </CardHeader>
+        <CardContent>
+          {extractionSummary.total === 0 ? (
+            <p className="text-gray-400">
+              No extraction records for this month
+            </p>
+          ) : (
+            <ul className="space-y-1 text-gray-300">
+              <li>Total entries: {extractionSummary.total}</li>
+              <li>PTO: {extractionSummary.pto}</li>
+              <li>Holidays: {extractionSummary.holiday}</li>
+              <li>Work days: {extractionSummary.work}</li>
+            </ul>
+          )}
+        </CardContent>
 
         <CardContent>
           {extractionJobsForMonth.length === 0 ? (
