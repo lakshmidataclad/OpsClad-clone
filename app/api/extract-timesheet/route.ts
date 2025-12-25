@@ -445,12 +445,20 @@ async function processTimesheetExtraction(
         p.date === entryDateStr
       );
 
+      const finalActivity = isHoliday
+        ? "HOLIDAY"
+        : isPTO
+        ? "PTO"
+        : entry.activity;
+
+      const finalHours = isHoliday ? 8 : entry.hours;
 
       return {
         ...entry,
         project: projectName,
-        required_hours: requiredHours,
-        activity: isHoliday ? "HOLIDAY" : isPTO ? "PTO" : entry.activity
+        activity: finalActivity,
+        hours: finalHours,
+        required_hours: requiredHours
       };
     });
 
