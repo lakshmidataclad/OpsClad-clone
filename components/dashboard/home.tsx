@@ -635,9 +635,7 @@ export default function HomePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="bg-gray-900 border-gray-700 min-h-[120px]">
             <CardHeader>
-              <CardTitle className="text-white text-sm">
-                Placeholder Box 1
-              </CardTitle>
+            <CardTitle className="text-white">News</CardTitle>
             </CardHeader>
             <CardContent className="text-gray-400 text-sm">
               {/* future content */}
@@ -646,9 +644,7 @@ export default function HomePage() {
 
           <Card className="bg-gray-900 border-gray-700 min-h-[120px]">
             <CardHeader>
-              <CardTitle className="text-white text-sm">
-                Placeholder Box 2
-              </CardTitle>
+            <CardTitle className="text-white">Socials</CardTitle>
             </CardHeader>
             <CardContent className="text-gray-400 text-sm">
               {/* future content */}
