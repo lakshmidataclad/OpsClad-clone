@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, ChevronLeft, ChevronRight, User, PartyPopper, X } from "lucide-react"
+import { Calendar, ChevronLeft, ChevronRight, User, PartyPopper, X, Plus } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 import {
@@ -360,7 +360,7 @@ export default function HomePage() {
   const [showWelcome, setShowWelcome] = useState(true)
   const [showContent, setShowContent] = useState(false)
   const [selectedDate, setSelectedDate] = useState<SelectedDateInfo | null>(null)
-
+  const [userRole, setUserRole] = useState<"manager" | "employee" | null>(null)
   const [selectedMonth, setSelectedMonth] = useState(() => {
   const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
@@ -588,11 +588,26 @@ export default function HomePage() {
  <div className="p-6 bg-gray-800 min-h-screen">
     <Tabs defaultValue="overview">
 
-      {/* TAB HEADER */}
-      <TabsList className="mb-6 bg-gray-900">
-        <TabsTrigger value="overview">Overview</TabsTrigger>
-        <TabsTrigger value="calendar">Calendar</TabsTrigger>
-      </TabsList>
+      {/* TAB HEADER WITH ACTION BUTTON */}
+      <div className="mb-6 flex items-center justify-between">
+        <TabsList className="bg-gray-900">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
+        </TabsList>
+        <Button size="sm">
+          <Plus className="w-4 h-4 mr-1" />
+          Add Announcement
+        </Button>
+
+          {userRole === "manager" && (
+            <Button>
+                <Plus className="w-4 h-4 mr-1" />
+            + Add Announcement
+            </Button>
+          )}
+
+
+      </div>
 
       {/* OVERVIEW TAB */}
       <TabsContent value="overview" className="space-y-6">
