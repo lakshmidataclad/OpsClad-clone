@@ -458,6 +458,7 @@ export default function HomePage() {
 
       if (error) {
         console.error("ROLE LOAD FAILED:", error)
+        // null = role could not be determined (safe default)
         setUserRole(null)
         return
       }
@@ -611,7 +612,11 @@ export default function HomePage() {
 
 
 
-  const todayEvents = ptoRecords.filter(record => isToday(parseISODate(record.date)))
+  const todayEvents = ptoRecords.filter(record => {
+    const normalized = normalizeDate(record.date)
+    if (!normalized) return false
+    return isToday(parseISODate(normalized))
+  })
   const todayBirthdays = getBirthdaysForDate(new Date())
   const todayHolidays = getHolidaysForDate(new Date())
 
@@ -624,8 +629,12 @@ export default function HomePage() {
   }
 
   const getTotalEmployeesOnLeave = (date: Date) => {
-    const recordsForDate = ptoRecords.filter(record => isSameDay(parseISODate(record.date), date))
-    return new Set(recordsForDate.map(record => record.employee_id)).size
+    const recordsForDate = ptoRecords.filter(record => {
+      const normalized = normalizeDate(record.date)
+      if (!normalized) return false
+      return isSameDay(parseISODate(normalized), date)
+    })
+    return new Set(recordsForDate.map(r => r.employee_id)).size
   }
 
   const getEmployeesOnLeaveToday = () => {
