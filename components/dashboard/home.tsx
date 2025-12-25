@@ -349,6 +349,7 @@ export default function HomePage() {
   const [showWelcome, setShowWelcome] = useState(true)
   const [showContent, setShowContent] = useState(false)
   const [selectedDate, setSelectedDate] = useState<SelectedDateInfo | null>(null)
+  const [extractions, setExtractions] = useState<any[]>([])
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
   const now = new Date()
@@ -405,12 +406,37 @@ export default function HomePage() {
         setHolidays(holidays || [])
       }
 
+      // Load extraction progress
+      const { data: extractionData, error: extractionError } = await supabase
+        .from("extraction_progress")
+        .select(`
+          extraction_id,
+          created_at,
+          completed_at,
+          total_entries_processed,
+          duplicate_entries_skipped,
+          search_method,
+          extracted_by
+        `)
+        .order("created_at", { ascending: false })
+
+      if (extractionError) {
+        console.error("Error loading extraction progress:", extractionError)
+      } else {
+        setExtractions(extractionData || [])
+      }
+
+
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
       setLoading(false)
     }
   }
+
+
+  
+  
 
   useEffect(() => {
     loadData()
@@ -467,6 +493,12 @@ const unpaidPtoTable = useMemo(() => {
 }, [ptoRecords, selectedMonthKey])
 
 
+const monthlyExtractions = useMemo(() => {
+  return extractions.filter(e => {
+    if (!e.created_at) return false
+    return e.created_at.startsWith(selectedMonthKey)
+  })
+}, [extractions, selectedMonthKey])
 
 
   const handleWelcomeComplete = () => {
@@ -725,6 +757,67 @@ const unpaidPtoTable = useMemo(() => {
         </Card>
 
       </div>
+
+      <Card className="bg-gray-900 border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-white">
+            Extraction Summary – {formatDate(selectedMonth, "MMMM yyyy")}
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent>
+          {monthlyExtractions.length === 0 ? (
+            <p className="text-gray-400">
+              No extraction records for this month
+            </p>
+          ) : (
+            <div className="space-y-3 text-sm text-gray-300">
+              {monthlyExtractions.map((ex, idx) => (
+                <div
+                  key={idx}
+                  className="grid grid-cols-1 md:grid-cols-5 gap-3 border-b border-gray-700 pb-3"
+                >
+                  <div>
+                    <p className="text-gray-400">Last Extracted</p>
+                    <p className="text-white">
+                      {formatDate(parseISODate(ex.created_at), "dd MMM yyyy")}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-gray-400">Processed</p>
+                    <p className="text-white">
+                      {ex.total_entries_processed ?? 0}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-gray-400">Duplicates Skipped</p>
+                    <p className="text-white">
+                      {ex.duplicate_entries_skipped ?? 0}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-gray-400">Search Method</p>
+                    <p className="text-white">
+                      {ex.search_method ?? "-"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-gray-400">Extracted By</p>
+                    <p className="text-white">
+                      {ex.extracted_by ?? "-"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
 
 
     </TabsContent>
