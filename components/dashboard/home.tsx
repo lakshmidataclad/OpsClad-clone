@@ -4,7 +4,16 @@ import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, ChevronLeft, ChevronRight, User, PartyPopper, X, Plus } from "lucide-react"
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  User,
+  Users,
+  PartyPopper,
+  X,
+  Plus,
+} from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 import {
