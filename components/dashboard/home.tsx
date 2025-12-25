@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Users, Clock, MapPin, ChevronLeft, ChevronRight, User, PartyPopper, X } from "lucide-react"
+import { Calendar, Users, ChevronLeft, ChevronRight, User, PartyPopper, X } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 import {
@@ -113,20 +113,9 @@ const isToday = (date: Date): boolean => {
   return isSameDay(date, new Date())
 }
 
-const isFuture = (date: Date): boolean => {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return date > today
-}
 
 const parseISODate = (dateString: string): Date => {
   return new Date(dateString + 'T00:00:00')
-}
-
-const formatDateForDB = (date: Date): string => {
-  return date.getFullYear() + '-' + 
-         (date.getMonth() + 1).toString().padStart(2, '0') + '-' + 
-         date.getDate().toString().padStart(2, '0')
 }
 
 
@@ -379,10 +368,6 @@ export default function HomePage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      
-      // Get records for the next 3 months to show upcoming events
-      const startDate = new Date(2000, 0, 1)
-      const endDate = new Date(2100, 11, 31)
 
       // Load PTO records
       const { data: ptoData, error: ptoError } = await supabase
@@ -435,49 +420,52 @@ export default function HomePage() {
   }, [])
 
 
-const ptoTable = useMemo(() => {
-  const byEmp: any = {}
+const paidPtoTable = useMemo(() => {
+  const byEmp: Record<string, string[]> = {}
 
   ptoRecords.forEach(p => {
     if (!p.is_pto) return
     if (p.status === "rejected") return
 
-    const d = normalizeDate(p.date)
-    if (!d) return
+    const start = normalizeDate(p.date)
+    if (!start) return
 
-    const key = p.employee_name
-    byEmp[key] ||= []
-    byEmp[key].push({
-      date: d,
-      status: p.status === "approved" ? "Approved" : "Pending",
-    })
+    // 🔑 Month gate (single-day PTO works too)
+    if (!rangeIntersectsMonth(start, start, selectedMonthKey)) return
+
+    byEmp[p.employee_name] ||= []
+    byEmp[p.employee_name].push(start)
   })
 
-return Object.entries(byEmp)
-  .map(([name, items]: any) => {
-    const sorted = items.sort((a: any, b: any) =>
-      a.date.localeCompare(b.date)
-    )
-
-  const ranges = buildContinuousRanges(sorted.map((x: any) => x.date))
-    .map(r => ({
-      ...r,
-      status: sorted.some(
-        (x: any) =>
-          x.date >= r.start &&
-          x.date <= r.end &&
-          x.status === "Pending"
-      )
-        ? "Pending"
-        : "Approved",
-    }))
-    return {
-      name,
-      ranges,
-    }
-  })
-  // ✅ KEY FIX: remove employees with no PTO in this month
+  return Object.entries(byEmp).map(([name, dates]) => ({
+    name,
+    ranges: buildContinuousRanges(dates.sort())
+  }))
 }, [ptoRecords, selectedMonthKey])
+
+const unpaidPtoTable = useMemo(() => {
+  const byEmp: Record<string, string[]> = {}
+
+  ptoRecords.forEach(p => {
+    if (p.is_pto) return
+    if (p.status === "rejected") return
+
+    const start = normalizeDate(p.date)
+    if (!start) return
+
+    // 🔑 Month gate
+    if (!rangeIntersectsMonth(start, start, selectedMonthKey)) return
+
+    byEmp[p.employee_name] ||= []
+    byEmp[p.employee_name].push(start)
+  })
+
+  return Object.entries(byEmp).map(([name, dates]) => ({
+    name,
+    ranges: buildContinuousRanges(dates.sort())
+  }))
+}, [ptoRecords, selectedMonthKey])
+
 
 
 
@@ -598,8 +586,6 @@ return Object.entries(byEmp)
 
 
   const todayEvents = ptoRecords.filter(record => isToday(parseISODate(record.date)))
-  const todayBirthdays = getBirthdaysForDate(new Date())
-  const todayHolidays = getHolidaysForDate(new Date())
 
 
   const calendarDays = generateCalendarDays()
@@ -690,27 +676,56 @@ return Object.entries(byEmp)
 
 
       {/* PTO SUMMARY */}
-      <Card className="bg-gray-900 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white">Paid Time Off</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {ptoTable.length === 0 ? (
-            <p className="text-gray-400">No PTO records</p>
-          ) : (
-            ptoTable.map(emp => (
-              <div key={emp.name}>
-                <p className="font-semibold text-white">{emp.name}</p>
-                {emp.ranges.map((r: any, i: number) => (
-                  <p key={i} className="text-sm text-gray-300">
-                    • {formatISOToDDMMYYYY(r.start)} → {formatISOToDDMMYYYY(r.end)} ({r.status})
-                  </p>
-                ))}
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        {/* PAID PTO */}
+        <Card className="bg-gray-900 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-white">Paid Time Off</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 max-h-[720px] overflow-y-auto pr-2">
+            {paidPtoTable.length === 0 ? (
+              <p className="text-gray-400">No paid PTO</p>
+            ) : (
+              paidPtoTable.map(emp => (
+                <div key={emp.name}>
+                  <p className="font-semibold text-white">{emp.name}</p>
+                  {emp.ranges.map((r: any, i: number) => (
+                    <p key={i} className="text-sm text-gray-300">
+                      • {formatISOToDDMMYYYY(r.start)} → {formatISOToDDMMYYYY(r.end)}
+                    </p>
+                  ))}
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* UNPAID PTO */}
+        <Card className="bg-gray-900 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-white">Unpaid Time Off</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 max-h-[720px] overflow-y-auto pr-2">
+            {unpaidPtoTable.length === 0 ? (
+              <p className="text-gray-400">No unpaid leave</p>
+            ) : (
+              unpaidPtoTable.map(emp => (
+                <div key={emp.name}>
+                  <p className="font-semibold text-white">{emp.name}</p>
+                  {emp.ranges.map((r: any, i: number) => (
+                    <p key={i} className="text-sm text-gray-300">
+                      • {formatISOToDDMMYYYY(r.start)} → {formatISOToDDMMYYYY(r.end)}
+                    </p>
+                  ))}
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+      </div>
+
 
     </TabsContent>
 
