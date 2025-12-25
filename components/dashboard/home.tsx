@@ -631,6 +631,31 @@ export default function HomePage() {
           </CardContent>
         </Card>
 
+        {/* Empty Boxes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="bg-gray-900 border-gray-700 min-h-[120px]">
+            <CardHeader>
+              <CardTitle className="text-white text-sm">
+                Placeholder Box 1
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-gray-400 text-sm">
+              {/* future content */}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-900 border-gray-700 min-h-[120px]">
+            <CardHeader>
+              <CardTitle className="text-white text-sm">
+                Placeholder Box 2
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-gray-400 text-sm">
+              {/* future content */}
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Upcoming Events */}
         <Card className="bg-gray-900 border-gray-700">
           <CardHeader>
@@ -652,7 +677,7 @@ export default function HomePage() {
       </TabsContent>
 
 
-      {/* 🔥 CALENDAR TAB — YOUR EXISTING CODE STARTS HERE 🔥 */}
+      {/* CALENDAR TAB — YOUR EXISTING CODE STARTS HERE */}
       <TabsContent value="calendar">
       <div className="p-6 space-y-6 bg-gray-800 min-h-screen animate-in fade-in duration-500">
         {/* Header */}
