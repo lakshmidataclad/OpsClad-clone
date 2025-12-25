@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Users, ChevronLeft, ChevronRight, User, PartyPopper, X } from "lucide-react"
+import { Calendar, Users, Clock, MapPin, ChevronLeft, ChevronRight, User, PartyPopper, X } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 import {
@@ -113,9 +113,20 @@ const isToday = (date: Date): boolean => {
   return isSameDay(date, new Date())
 }
 
+const isFuture = (date: Date): boolean => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return date > today
+}
 
 const parseISODate = (dateString: string): Date => {
   return new Date(dateString + 'T00:00:00')
+}
+
+const formatDateForDB = (date: Date): string => {
+  return date.getFullYear() + '-' + 
+         (date.getMonth() + 1).toString().padStart(2, '0') + '-' + 
+         date.getDate().toString().padStart(2, '0')
 }
 
 
@@ -294,21 +305,6 @@ const normalizeDate = (date: string | null): string | null => {
   return null
 }
 
-const parseExtractedEntries = (raw: string | null) => {
-  if (!raw) return []
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return []
-  }
-}
-
-const normalizeMDY = (date: string): string | null => {
-  if (!date.includes("/")) return null
-  const [m, d, y] = date.split("/")
-  return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
-}
-
 const formatISOToDDMMYYYY = (iso: string) => {
   const [y, m, d] = iso.split("-")
   return `${d}-${m}-${y}`
@@ -362,8 +358,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showWelcome, setShowWelcome] = useState(true)
+  const [showContent, setShowContent] = useState(false)
   const [selectedDate, setSelectedDate] = useState<SelectedDateInfo | null>(null)
-  const [extractions, setExtractions] = useState<any[]>([])
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
   const now = new Date()
@@ -380,24 +376,13 @@ export default function HomePage() {
 
   const selectedMonthKey = formatDate(selectedMonth, "yyyy-MM")
   
-
-  const extractionHasMonthData = (
-    extraction: any,
-    selectedMonthKey: string
-  ): boolean => {
-    const entries = parseExtractedEntries(extraction.new_extracted_entries)
-
-    return entries.some((e: any) => {
-      const iso = normalizeMDY(e.date)
-      return iso?.startsWith(selectedMonthKey)
-    })
-  }
-
-
-
   const loadData = async () => {
     try {
       setLoading(true)
+      
+      // Get records for the next 3 months to show upcoming events
+      const startDate = new Date(2000, 0, 1)
+      const endDate = new Date(2100, 11, 31)
 
       // Load PTO records
       const { data: ptoData, error: ptoError } = await supabase
@@ -435,99 +420,12 @@ export default function HomePage() {
         setHolidays(holidays || [])
       }
 
-      // Load extraction progress
-      const { data: extractionData, error: extractionError } = await supabase
-        .from("extraction_progress")
-        .select(`
-          extraction_id,
-          created_at,
-          completed_at,
-          total_entries_processed,
-          duplicate_entries_skipped,
-          search_method,
-          extracted_by,
-          new_extracted_entries
-        `)
-        .order("created_at", { ascending: false })
-
-      if (extractionError) {
-        console.error("Error loading extraction progress:", extractionError)
-      } else {
-        setExtractions(extractionData || [])
-      }
-
-
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
       setLoading(false)
     }
   }
-
-
-  
-  type PtoRange = {
-    start: string
-    end: string
-    status: "Pending" | "Approved"
-  }
-
-  type PtoEmployeeBlock = {
-    name: string
-    ranges: PtoRange[]
-  }
-
-  const buildPtoTable = (
-    records: PTORecord[],
-    isPaid: boolean
-  ): PtoEmployeeBlock[] => {
-    const byEmp: Record<string, { date: string; status: "Pending" | "Approved" }[]> = {}
-
-    records.forEach(p => {
-      if (p.is_pto !== isPaid) return
-      if (p.status === "rejected") return
-
-      const d = normalizeDate(p.date)
-      if (!d) return
-
-      const key = p.employee_name
-      byEmp[key] ||= []
-      byEmp[key].push({
-        date: d,
-        status: p.status === "approved" ? "Approved" : "Pending",
-      })
-    })
-
-    return Object.entries(byEmp).map(([name, items]) => {
-      // ✅ sorted is defined HERE
-      const sorted = items.sort((a, b) => a.date.localeCompare(b.date))
-
-      const ranges: PtoRange[] = buildContinuousRanges(
-        sorted.map(x => x.date)
-      ).map(r => {
-        // ✅ status calculation must live here
-        const status: "Pending" | "Approved" =
-          sorted.some(
-            x =>
-              x.date >= r.start &&
-              x.date <= r.end &&
-              x.status === "Pending"
-          )
-            ? "Pending"
-            : "Approved"
-
-        return {
-          start: r.start,
-          end: r.end,
-          status,
-        }
-      })
-
-      return { name, ranges }
-    })
-  }
-
-  
 
   useEffect(() => {
     loadData()
@@ -537,60 +435,111 @@ export default function HomePage() {
   }, [])
 
 
-    useEffect(() => {
-    const hasSeenWelcome = sessionStorage.getItem("opsclad-welcome")
-    if (hasSeenWelcome) {
-      setShowWelcome(false)
-    }
-  }, [])
+const ptoTable = useMemo(() => {
+  const byEmp: any = {}
 
-const paidPtoTable = useMemo(
-  () => buildPtoTable(ptoRecords, true),
-  [ptoRecords]
-)
+  ptoRecords.forEach(p => {
+    if (!p.is_pto) return
+    if (p.status === "rejected") return
 
-const unpaidPtoTable = useMemo(
-  () => buildPtoTable(ptoRecords, false),
-  [ptoRecords]
-)
+    const d = normalizeDate(p.date)
+    if (!d) return
 
-const extractionSummary = useMemo(() => {
-  let total = 0
-  let pto = 0
-  let holiday = 0
-  let work = 0
-
-  extractions.forEach(row => {
-    const entries = parseExtractedEntries(row.new_extracted_entries)
-
-    entries.forEach((e: any) => {
-      const iso = normalizeMDY(e.date)
-      if (!iso) return
-      if (!iso.startsWith(selectedMonthKey)) return
-
-      total++
-
-      if (e.activity === "PTO") pto++
-      else if (e.activity === "HOLIDAY") holiday++
-      else if (e.activity === "WORK") work++
+    const key = p.employee_name
+    byEmp[key] ||= []
+    byEmp[key].push({
+      date: d,
+      status: p.status === "approved" ? "Approved" : "Pending",
     })
   })
 
-  return { total, pto, holiday, work }
-}, [extractions, selectedMonthKey])
+
+  
+
+return Object.entries(byEmp)
+  .map(([name, items]: any) => {
+    const sorted = items.sort((a: any, b: any) =>
+      a.date.localeCompare(b.date)
+    )
+
+  const ranges = buildContinuousRanges(sorted.map((x: any) => x.date))
+    .map(r => ({
+      ...r,
+      status: sorted.some(
+        (x: any) =>
+          x.date >= r.start &&
+          x.date <= r.end &&
+          x.status === "Pending"
+      )
+        ? "Pending"
+        : "Approved",
+    }))
+    return {
+      name,
+      ranges,
+    }
+  })
+  // ✅ KEY FIX: remove employees with no PTO in this month
+}, [ptoRecords, selectedMonthKey])
 
 
-const extractionJobsForMonth = useMemo(() => {
-  return extractions.filter(ex =>
-    extractionHasMonthData(ex, selectedMonthKey)
-  )
-}, [extractions, selectedMonthKey])
+const paidPtoTable = useMemo(() => {
+  const byEmp: any = {}
+
+  ptoRecords.forEach(p => {
+    if (!p.is_pto) return
+    if (p.status === "rejected") return
+
+    const d = normalizeDate(p.date)
+    if (!d) return
+
+    byEmp[p.employee_name] ||= []
+    byEmp[p.employee_name].push({
+      date: d,
+      status: p.status === "approved" ? "Approved" : "Pending",
+    })
+  })
+
+  return Object.entries(byEmp).map(([name, items]: any) => ({
+    name,
+    ranges: buildContinuousRanges(
+      items.sort((a: any, b: any) => a.date.localeCompare(b.date))
+           .map((x: any) => x.date)
+    )
+  }))
+}, [ptoRecords])
 
 
-const handleWelcomeComplete = () => {
-  sessionStorage.setItem("opsclad-welcome", "true")
-  setShowWelcome(false)
-}
+const unpaidPtoTable = useMemo(() => {
+  const byEmp: any = {}
+
+  ptoRecords.forEach(p => {
+    if (p.is_pto) return              // 🔴 unpaid only
+    if (p.status === "rejected") return
+
+    const d = normalizeDate(p.date)
+    if (!d) return
+
+    byEmp[p.employee_name] ||= []
+    byEmp[p.employee_name].push(d)
+  })
+
+  return Object.entries(byEmp).map(([name, dates]: any) => ({
+    name,
+    ranges: buildContinuousRanges(dates.sort())
+  }))
+}, [ptoRecords])
+
+
+
+
+  const handleWelcomeComplete = () => {
+    setShowWelcome(false)
+    // Small delay before showing content for smooth transition
+    setTimeout(() => {
+      setShowContent(true)
+    }, 300)
+  }
 
   const getBirthdaysForDate = (date: Date): Employee[] => {
     return employees.filter(employee => {
@@ -701,6 +650,8 @@ const handleWelcomeComplete = () => {
 
 
   const todayEvents = ptoRecords.filter(record => isToday(parseISODate(record.date)))
+  const todayBirthdays = getBirthdaysForDate(new Date())
+  const todayHolidays = getHolidaysForDate(new Date())
 
 
   const calendarDays = generateCalendarDays()
@@ -724,8 +675,9 @@ const handleWelcomeComplete = () => {
     return <TypingWelcome employeeName='' onComplete={handleWelcomeComplete} />
   }
 
-  if (showWelcome) {
-    return <TypingWelcome employeeName="" onComplete={handleWelcomeComplete} />
+  // Show calendar content after welcome
+  if (!showContent) {
+    return <div className="bg-gray-800 min-h-screen" />
   }
 
   return (
@@ -839,75 +791,6 @@ const handleWelcomeComplete = () => {
         </Card>
 
       </div>
-
-      <Card className="bg-gray-900 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white">
-            Extraction Summary – {formatDate(selectedMonth, "MMMM yyyy")}
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent>
-          {extractionJobsForMonth.length === 0 ? (
-            <p className="text-gray-400">
-              No extraction records for this month
-            </p>
-          ) : (
-            extractionJobsForMonth.map((ex, idx) => (
-              <div
-                key={idx}
-                className="grid grid-cols-1 md:grid-cols-5 gap-3 border-b border-gray-700 pb-3"
-              >
-                <div>
-                  <p className="text-gray-400">Last Extracted</p>
-                  <p className="text-white">
-                    {formatDate(
-                      parseISODate(
-                        // normalize timestamp just in case
-                        ex.created_at.includes("T")
-                          ? ex.created_at
-                          : ex.created_at.replace(" ", "T")
-                      ),
-                      "dd MMM yyyy"
-                    )}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-gray-400">Processed</p>
-                  <p className="text-white">
-                    {ex.total_entries_processed ?? 0}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-gray-400">Duplicates Skipped</p>
-                  <p className="text-white">
-                    {ex.duplicate_entries_skipped ?? 0}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-gray-400">Search Method</p>
-                  <p className="text-white">
-                    {ex.search_method ?? "-"}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-gray-400">Extracted By</p>
-                  <p className="text-white">
-                    {ex.extracted_by ?? "-"}
-                  </p>
-                </div>
-              </div>
-            ))
-          )}
-
-
-        </CardContent>
-      </Card>
-
 
 
     </TabsContent>
