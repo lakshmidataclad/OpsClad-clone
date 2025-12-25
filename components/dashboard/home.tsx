@@ -647,10 +647,6 @@ export default function HomePage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
         </TabsList>
-        <Button size="sm">
-          <Plus className="w-4 h-4 mr-1" />
-          Add Announcement
-        </Button>
           {userRole === "manager" && (
             <Button size="sm">
               <Plus className="w-4 h-4 mr-1" />
