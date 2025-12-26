@@ -13,8 +13,10 @@ import {
   PartyPopper,
   X,
   Plus,
+  Loader2,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { useToast } from "@/hooks/use-toast"
 
 import {
   Tabs,
@@ -22,6 +24,22 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+
+
+
 
 interface PTORecord {
   id: string
@@ -374,6 +392,17 @@ export default function HomePage() {
   const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
   })
+  const [announcements, setAnnouncements] = useState<any[]>([])
+  const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false)
+  const [submittingAnnouncement, setSubmittingAnnouncement] = useState(false)
+  const { toast } = useToast()
+
+
+  const [announcement, setAnnouncement] = useState({
+    title: "",
+    content: "",
+  })
+  
 
   const changeMonth = (direction: "prev" | "next") => {
     setSelectedMonth(prev => {
@@ -428,6 +457,13 @@ export default function HomePage() {
       } else {
         setHolidays(holidays || [])
       }
+
+      const { data: announcementData, error } = await supabase
+        .from("announcements")
+        .select("id, title, content, created_at")
+        .order("created_at", { ascending: false })
+
+      if (!error) setAnnouncements(announcementData || [])
 
     } catch (error) {
       console.error('Error loading data:', error)
@@ -488,6 +524,51 @@ export default function HomePage() {
   }
 }, [])
 
+
+const submitAnnouncement = async () => {
+  if (!announcement.title || !announcement.content) {
+    toast({
+      title: "Missing fields",
+      description: "Title and content are required",
+      variant: "destructive",
+    })
+    return
+  }
+
+  setSubmittingAnnouncement(true)
+
+  try {
+    const { error } = await supabase
+      .from("announcements")
+      .insert({
+        title: announcement.title,
+        content: announcement.content,
+      })
+
+    if (error) throw error
+
+    toast({
+      title: "Announcement posted",
+      description: "Everyone can now see this announcement",
+    })
+
+    setAnnouncement({ title: "", content: "" })
+    setIsAnnouncementOpen(false)
+
+    // optional refresh
+    // loadAnnouncements()
+
+  } catch (err) {
+    console.error(err)
+    toast({
+      title: "Error",
+      description: "Failed to post announcement",
+      variant: "destructive",
+    })
+  } finally {
+    setSubmittingAnnouncement(false)
+  }
+}
 
 
 
@@ -664,7 +745,7 @@ export default function HomePage() {
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
         </TabsList>
           {userRole === "manager" && (
-            <Button size="sm">
+            <Button size="sm" onClick={() => setIsAnnouncementOpen(true)}>
               <Plus className="w-4 h-4 mr-1" />
               Add Announcement
             </Button>
@@ -704,7 +785,23 @@ export default function HomePage() {
           <CardHeader>
             <CardTitle className="text-white">Anouncements</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 text-gray-300">
+          <CardContent className="space-y-4 text-gray-300">
+            {announcements.length === 0 ? (
+              <p className="text-gray-400 text-sm">No announcements</p>
+            ) : (
+              announcements.map(a => (
+                <div
+                  key={a.id}
+                  className="border border-gray-700 rounded-lg p-3 bg-gray-800"
+                >
+                  <p className="text-white font-semibold">{a.title}</p>
+                  <p className="text-sm text-gray-300 mt-1">{a.content}</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {new Date(a.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
 
@@ -891,6 +988,70 @@ export default function HomePage() {
         </div>
       </TabsContent>
     </Tabs>
+
+ {/* 🔔 ANNOUNCEMENT DIALOG — PLACE HERE */}
+    <Dialog open={isAnnouncementOpen} onOpenChange={setIsAnnouncementOpen}>
+      <DialogContent className="bg-gray-950 border-gray-700 text-white">
+        <DialogHeader>
+          <DialogTitle className="text-white">
+            Add Announcement
+          </DialogTitle>
+          <DialogDescription className="text-gray-400">
+            This will be visible to all employees.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div>
+            <Label className="text-white">Title</Label>
+            <Input
+              value={announcement.title}
+              onChange={(e) =>
+                setAnnouncement(prev => ({ ...prev, title: e.target.value }))
+              }
+              className="bg-gray-800 border-gray-600 text-white"
+              placeholder="Short headline"
+            />
+          </div>
+
+          <div>
+            <Label className="text-white">Message</Label>
+            <Textarea
+              value={announcement.content}
+              onChange={(e) =>
+                setAnnouncement(prev => ({ ...prev, content: e.target.value }))
+              }
+              className="bg-gray-800 border-gray-600 text-white"
+              placeholder="Write the announcement details here..."
+              rows={4}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setIsAnnouncementOpen(false)}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            onClick={submitAnnouncement}
+            disabled={submittingAnnouncement}
+            className="bg-orange-600 hover:bg-orange-700"
+          >
+            {submittingAnnouncement ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4 mr-2" />
+            )}
+            {submittingAnnouncement ? "Posting..." : "Post Announcement"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
   </div>
 )
 }
