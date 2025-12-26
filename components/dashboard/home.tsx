@@ -833,38 +833,26 @@ const visibleAnnouncements = announcements.filter(a =>
         </Card>
 
           {/* Anouncements */}
-        <Card className="bg-gray-900 border-l-4 border-blue-500">
+        <Card className="bg-gray-900 border-l-4">
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
-              <PartyPopper className="w-5 h-5 text-blue-400" />
               <CardTitle className="text-white">Announcements</CardTitle>
             </div>
-
-            {userRole === "manager" && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-blue-500 text-blue-400 hover:bg-blue-500/10"
-                onClick={() => setIsAnnouncementOpen(true)}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                New
-              </Button>
-            )}
           </CardHeader>
-
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 text-gray-300">
             {visibleAnnouncements.length === 0 ? (
-              <p className="text-gray-400 text-sm">No announcements this month</p>
+              <p className="text-gray-400 text-sm">
+                No announcements for this month
+              </p>
             ) : (
               visibleAnnouncements.map(a => (
                 <div
                   key={a.id}
-                  className="p-4 rounded-lg bg-gray-800 hover:bg-gray-750 transition border border-gray-700"
+                  className="border border-gray-700 rounded-lg p-3 bg-gray-800"
                 >
-                  <p className="text-sm text-gray-300 mt-2">{a.content}</p>
-
-                  <p className="text-xs text-gray-500 mt-3">
+                  <p className="text-white font-semibold">{a.title}</p>
+                  <p className="text-sm text-gray-300 mt-1">{a.content}</p>
+                  <p className="text-xs text-gray-500 mt-2">
                     {a.start_date} → {a.end_date}
                   </p>
                 </div>
@@ -872,6 +860,7 @@ const visibleAnnouncements = announcements.filter(a =>
             )}
           </CardContent>
         </Card>
+
 
 
         {/* Empty Boxes */}
