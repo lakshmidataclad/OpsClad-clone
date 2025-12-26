@@ -802,37 +802,41 @@ const visibleAnnouncements = announcements.filter(a =>
 
         {/* Month Selector */}
         <Card className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 border-none text-white">
-          <CardContent className="flex items-center justify-between py-6">
+          <CardContent className="flex items-center justify-between py-3 px-4">
             <Button
               variant="ghost"
+              size="sm"
               onClick={() => changeMonth("prev")}
               className="text-white hover:bg-white/20"
             >
-              ◀
+              <ChevronLeft className="w-4 h-4" />
             </Button>
 
             <div className="text-center">
-              <p className="text-sm opacity-80">Overview for</p>
-              <p className="text-2xl font-bold">
+              <p className="text-xs uppercase tracking-wide opacity-80">
+                Overview
+              </p>
+              <p className="text-lg font-semibold">
                 {formatDate(selectedMonth, "MMMM yyyy")}
               </p>
             </div>
 
             <Button
               variant="ghost"
+              size="sm"
               onClick={() => changeMonth("next")}
               className="text-white hover:bg-white/20"
             >
-              ▶
+              <ChevronRight className="w-4 h-4" />
             </Button>
           </CardContent>
         </Card>
 
           {/* Anouncements */}
-        <Card className="bg-gray-900 border-l-4 border-orange-500">
+        <Card className="bg-gray-900 border-l-4 border-blue-500">
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
-              <PartyPopper className="w-5 h-5 text-orange-400" />
+              <PartyPopper className="w-5 h-5 text-blue-400" />
               <CardTitle className="text-white">Announcements</CardTitle>
             </div>
 
@@ -840,7 +844,7 @@ const visibleAnnouncements = announcements.filter(a =>
               <Button
                 size="sm"
                 variant="outline"
-                className="border-orange-500 text-orange-400 hover:bg-orange-500/10"
+                className="border-blue-500 text-blue-400 hover:bg-blue-500/10"
                 onClick={() => setIsAnnouncementOpen(true)}
               >
                 <Plus className="w-4 h-4 mr-1" />
@@ -858,13 +862,6 @@ const visibleAnnouncements = announcements.filter(a =>
                   key={a.id}
                   className="p-4 rounded-lg bg-gray-800 hover:bg-gray-750 transition border border-gray-700"
                 >
-                  <div className="flex justify-between items-start">
-                    <p className="text-white font-semibold">{a.title}</p>
-                    <Badge variant="outline" className="border-orange-500 text-orange-400">
-                      Active
-                    </Badge>
-                  </div>
-
                   <p className="text-sm text-gray-300 mt-2">{a.content}</p>
 
                   <p className="text-xs text-gray-500 mt-3">
@@ -916,12 +913,15 @@ const visibleAnnouncements = announcements.filter(a =>
               upcomingEvents.map(ev => (
                 <div
                   key={ev.id}
-                  className="flex items-center justify-between p-3 bg-gray-800 rounded-lg hover:bg-gray-750 transition"
+                  className="flex items-center justify-between p-3 bg-gray-800 rounded-lg hover:bg-orange-500/5 transition border border-gray-700"
                 >
                   <span className="text-white">{ev.title}</span>
-                  <Badge variant="outline" className="border-gray-600 text-gray-300">
-                    {formatDate(parseISODate(ev.date), "MMM dd")}
-                  </Badge>
+                <Badge
+                  variant="outline"
+                  className="border-orange-500 text-orange-400"
+                >
+                  {formatDate(parseISODate(ev.date), "MMM dd")}
+                </Badge>
                 </div>
               ))
             )}
