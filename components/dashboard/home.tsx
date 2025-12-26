@@ -462,7 +462,7 @@ export default function HomePage() {
 
       const { data: announcementData, error } = await supabase
         .from("announcements")
-        .select("id, title, content, created_at")
+        .select("id, title, content, start_date, end_date, created_at")
         .order("created_at", { ascending: false })
 
       if (!error) setAnnouncements(announcementData || [])
