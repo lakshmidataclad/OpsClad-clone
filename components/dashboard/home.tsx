@@ -801,24 +801,27 @@ const visibleAnnouncements = announcements.filter(a =>
       <TabsContent value="overview" className="space-y-6">
 
         {/* Month Selector */}
-        <Card className="bg-gray-900 border-gray-700">
-          <CardContent className="flex items-center justify-between py-4">
+        <Card className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 border-none text-white">
+          <CardContent className="flex items-center justify-between py-6">
             <Button
               variant="ghost"
               onClick={() => changeMonth("prev")}
-              className="text-gray-400 hover:text-white"
+              className="text-white hover:bg-white/20"
             >
               ◀
             </Button>
 
-            <div className="text-white font-semibold text-lg">
-              {formatDate(selectedMonth, "MMMM yyyy")}
+            <div className="text-center">
+              <p className="text-sm opacity-80">Overview for</p>
+              <p className="text-2xl font-bold">
+                {formatDate(selectedMonth, "MMMM yyyy")}
+              </p>
             </div>
 
             <Button
               variant="ghost"
               onClick={() => changeMonth("next")}
-              className="text-gray-400 hover:text-white"
+              className="text-white hover:bg-white/20"
             >
               ▶
             </Button>
@@ -826,19 +829,45 @@ const visibleAnnouncements = announcements.filter(a =>
         </Card>
 
           {/* Anouncements */}
-        <Card className="bg-gray-900 border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-white">Anouncements</CardTitle>
+        <Card className="bg-gray-900 border-l-4 border-orange-500">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PartyPopper className="w-5 h-5 text-orange-400" />
+              <CardTitle className="text-white">Announcements</CardTitle>
+            </div>
+
+            {userRole === "manager" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-orange-500 text-orange-400 hover:bg-orange-500/10"
+                onClick={() => setIsAnnouncementOpen(true)}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                New
+              </Button>
+            )}
           </CardHeader>
-          <CardContent className="space-y-4 text-gray-300">
+
+          <CardContent className="space-y-4">
             {visibleAnnouncements.length === 0 ? (
               <p className="text-gray-400 text-sm">No announcements this month</p>
             ) : (
               visibleAnnouncements.map(a => (
-                <div key={a.id} className="border border-gray-700 rounded-lg p-3 bg-gray-800">
-                  <p className="text-white font-semibold">{a.title}</p>
-                  <p className="text-sm text-gray-300 mt-1">{a.content}</p>
-                  <p className="text-xs text-gray-500 mt-2">
+                <div
+                  key={a.id}
+                  className="p-4 rounded-lg bg-gray-800 hover:bg-gray-750 transition border border-gray-700"
+                >
+                  <div className="flex justify-between items-start">
+                    <p className="text-white font-semibold">{a.title}</p>
+                    <Badge variant="outline" className="border-orange-500 text-orange-400">
+                      Active
+                    </Badge>
+                  </div>
+
+                  <p className="text-sm text-gray-300 mt-2">{a.content}</p>
+
+                  <p className="text-xs text-gray-500 mt-3">
                     {a.start_date} → {a.end_date}
                   </p>
                 </div>
@@ -846,6 +875,7 @@ const visibleAnnouncements = announcements.filter(a =>
             )}
           </CardContent>
         </Card>
+
 
         {/* Empty Boxes */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -868,24 +898,36 @@ const visibleAnnouncements = announcements.filter(a =>
           </Card>
         </div>
 
+        <TabsContent value="overview" className="space-y-8">
+
         {/* Upcoming Events */}
         <Card className="bg-gray-900 border-gray-700">
           <CardHeader>
-            <CardTitle className="text-white">Upcoming Events</CardTitle>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Upcoming Events
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 text-gray-300">
+
+          <CardContent className="space-y-3">
             {upcomingEvents.length === 0 ? (
-              <p>No upcoming events this month</p>
+              <p className="text-gray-400">No upcoming events</p>
             ) : (
               upcomingEvents.map(ev => (
-                <div key={ev.id} className="flex justify-between">
-                  <span>{ev.title}</span>
-                  <span>{formatDate(parseISODate(ev.date), "MMM dd")}</span>
+                <div
+                  key={ev.id}
+                  className="flex items-center justify-between p-3 bg-gray-800 rounded-lg hover:bg-gray-750 transition"
+                >
+                  <span className="text-white">{ev.title}</span>
+                  <Badge variant="outline" className="border-gray-600 text-gray-300">
+                    {formatDate(parseISODate(ev.date), "MMM dd")}
+                  </Badge>
                 </div>
               ))
             )}
           </CardContent>
         </Card>
+
       </TabsContent>
 
 
