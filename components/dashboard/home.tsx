@@ -525,16 +525,9 @@ export default function HomePage() {
 }, [])
 
 
-const submitAnnouncement = async () => {
-  if (!announcement.title || !announcement.content) {
-    toast({
-      title: "Missing fields",
-      description: "Title and content are required",
-      variant: "destructive",
-    })
-    return
-  }
 
+
+const submitAnnouncement = async () => {
   setSubmittingAnnouncement(true)
 
   try {
@@ -549,14 +542,11 @@ const submitAnnouncement = async () => {
 
     toast({
       title: "Announcement posted",
-      description: "Everyone can now see this announcement",
+      description: "Visible to all employees",
     })
 
     setAnnouncement({ title: "", content: "" })
     setIsAnnouncementOpen(false)
-
-    // optional refresh
-    // loadAnnouncements()
 
   } catch (err) {
     console.error(err)
@@ -569,6 +559,8 @@ const submitAnnouncement = async () => {
     setSubmittingAnnouncement(false)
   }
 }
+
+
 
 
 
