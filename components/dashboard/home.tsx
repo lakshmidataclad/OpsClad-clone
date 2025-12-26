@@ -401,6 +401,8 @@ export default function HomePage() {
   const [announcement, setAnnouncement] = useState({
     title: "",
     content: "",
+    start_date: "",
+    end_date: "",
   })
   
 
@@ -528,6 +530,20 @@ export default function HomePage() {
 
 
 const submitAnnouncement = async () => {
+  if (
+    !announcement.title ||
+    !announcement.content ||
+    !announcement.start_date ||
+    !announcement.end_date
+  ) {
+    toast({
+      title: "Missing fields",
+      description: "All fields including date range are required",
+      variant: "destructive",
+    })
+    return
+  }
+
   setSubmittingAnnouncement(true)
 
   try {
@@ -536,17 +552,20 @@ const submitAnnouncement = async () => {
       .insert({
         title: announcement.title,
         content: announcement.content,
+        start_date: announcement.start_date,
+        end_date: announcement.end_date,
       })
 
     if (error) throw error
 
-    toast({
-      title: "Announcement posted",
-      description: "Visible to all employees",
-    })
-
-    setAnnouncement({ title: "", content: "" })
+    toast({ title: "Announcement posted" })
     setIsAnnouncementOpen(false)
+    setAnnouncement({
+      title: "",
+      content: "",
+      start_date: "",
+      end_date: "",
+    })
 
   } catch (err) {
     console.error(err)
@@ -560,6 +579,40 @@ const submitAnnouncement = async () => {
   }
 }
 
+
+// Filter announcements for the selected month
+const doesAnnouncementOverlapMonth = (
+  start: string,
+  end: string,
+  monthStart: Date,
+  monthEnd: Date
+) => {
+  return (
+    new Date(start) <= monthEnd &&
+    new Date(end) >= monthStart
+  )
+}
+
+const monthStart = new Date(
+  selectedMonth.getFullYear(),
+  selectedMonth.getMonth(),
+  1
+)
+
+const monthEnd = new Date(
+  selectedMonth.getFullYear(),
+  selectedMonth.getMonth() + 1,
+  0
+)
+
+const visibleAnnouncements = announcements.filter(a =>
+  doesAnnouncementOverlapMonth(
+    a.start_date,
+    a.end_date,
+    monthStart,
+    monthEnd
+  )
+)
 
 
 
@@ -778,18 +831,15 @@ const submitAnnouncement = async () => {
             <CardTitle className="text-white">Anouncements</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-gray-300">
-            {announcements.length === 0 ? (
-              <p className="text-gray-400 text-sm">No announcements</p>
+            {visibleAnnouncements.length === 0 ? (
+              <p className="text-gray-400 text-sm">No announcements this month</p>
             ) : (
-              announcements.map(a => (
-                <div
-                  key={a.id}
-                  className="border border-gray-700 rounded-lg p-3 bg-gray-800"
-                >
+              visibleAnnouncements.map(a => (
+                <div key={a.id} className="border border-gray-700 rounded-lg p-3 bg-gray-800">
                   <p className="text-white font-semibold">{a.title}</p>
                   <p className="text-sm text-gray-300 mt-1">{a.content}</p>
                   <p className="text-xs text-gray-500 mt-2">
-                    {new Date(a.created_at).toLocaleDateString()}
+                    {a.start_date} → {a.end_date}
                   </p>
                 </div>
               ))
@@ -1005,6 +1055,34 @@ const submitAnnouncement = async () => {
               placeholder="Short headline"
             />
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-white">Start Date</Label>
+              <Input
+                type="date"
+                value={announcement.start_date}
+                onChange={(e) =>
+                  setAnnouncement(prev => ({ ...prev, start_date: e.target.value }))
+                }
+                className="bg-gray-800 border-gray-600 text-white"
+              />
+            </div>
+
+            <div>
+              <Label className="text-white">End Date</Label>
+              <Input
+                type="date"
+                min={announcement.start_date}
+                value={announcement.end_date}
+                onChange={(e) =>
+                  setAnnouncement(prev => ({ ...prev, end_date: e.target.value }))
+                }
+                className="bg-gray-800 border-gray-600 text-white"
+              />
+            </div>
+          </div>
+
 
           <div>
             <Label className="text-white">Message</Label>
