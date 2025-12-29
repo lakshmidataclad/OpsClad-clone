@@ -93,6 +93,16 @@ interface Announcement {
 }
 
 
+interface SocialMessage {
+  id: string
+  user_id: string
+  user_name: string
+  user_role: "manager" | "employee"
+  message: string
+  created_at: string
+}
+
+
 // Utility functions for date handling
 const formatDate = (date: Date, format: string): string => {
   const months = [
@@ -406,10 +416,8 @@ export default function HomePage() {
   const [submittingAnnouncement, setSubmittingAnnouncement] = useState(false)
   const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null)
 
-  const [socialMessages, setSocialMessages] = useState<any[]>([])
+  const [socialMessages, setSocialMessages] = useState<SocialMessage[]>([])
   const [socialInput, setSocialInput] = useState("")
-  const DARK_GREY = "bg-gray-800 border-gray-700"
-  const DARK_RED = "bg-red-900/30 border-red-800"
   const messagesEndRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
@@ -452,7 +460,7 @@ export default function HomePage() {
     "from-gray-800/40 to-gray-900 border-gray-700 opacity-70",
   }
 
-  const openEditAnnouncement = (a: any) => {
+const openEditAnnouncement = (a: Announcement) => {
   setEditingAnnouncementId(a.id)
   setAnnouncement({
     title: a.title,
@@ -492,9 +500,9 @@ const getMessageBg = (index: number, messages: any[]) => {
   const curr = messages[index]
 
   // Same sender → keep previous colour
-  if (prev.user_id === curr.user_id) {
-    return getMessageBg(index - 1, messages)
-  }
+if (prev.user_id === curr.user_id) {
+  return index > 1 ? getMessageBg(index - 1, messages) : "bg-gray-800 border-gray-700"
+}
 
   // New sender → alternate
   return index % 2 === 0
@@ -602,7 +610,7 @@ const getMessageBg = (index: number, messages: any[]) => {
       if (error) {
         console.error("ROLE LOAD FAILED:", error)
         // null = role could not be determined (safe default)
-        setUserRole(null)
+        setUserRole("employee")
         return
       }
 
@@ -969,25 +977,31 @@ const visibleAnnouncements = announcements.filter(a =>
       <TabsContent value="overview" className="space-y-6">
 
         {/* Month Selector */}
-        <Card className="
-          bg-gradient-to-r
-          from-[#ff6b4a]
-          via-[#ff8f6b]
-          to-[#fff2e8]
-          border-none
-          text-gray-900
-          shadow-[0_10px_30px_rgba(255,107,74,0.35)]
-        ">          
+        <Card
+          className="
+            bg-gradient-to-r
+            from-[#ff6b4a]
+            via-[#ff8f6b]
+            to-[#0f172a]
+            border-none
+            shadow-[0_12px_35px_rgba(15,23,42,0.55)]
+          "
+        >      
           <CardContent className="flex items-center justify-between py-3 px-4">
-            <Button variant="ghost" size="sm" className="text-gray-900 hover:bg-black/10">
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => changeMonth("prev")}
+            className="text-white hover:bg-white/10"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
 
             <div className="text-center">
-              <p className="text-xs uppercase tracking-wide opacity-70">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/80 font-semibold">
                 Overview
               </p>
-              <p className="text-lg font-semibold">
+              <p className="text-xl font-extrabold tracking-wide text-white drop-shadow">
                 {formatDate(selectedMonth, "MMMM yyyy")}
               </p>
             </div>
@@ -1157,10 +1171,10 @@ const visibleAnnouncements = announcements.filter(a =>
                       )}
 
                       {/* 💬 Message */}
-                      <div className={`mb-2 ${isSameSender ? "ml-6" : ""}`}>
+                      <div className={`${isSameSender ? "ml-6 mt-1" : "mt-3"}`}>
                         {/* 👤 Sender Header (only once per group) */}
                         {!isSameSender && (
-                          <div className="flex items-center gap-2 mb-1 text-xs">
+                          <div className="flex items-center gap-2 mb-0.5 text-xs">
                             <span className="font-semibold text-white">
                               {msg.user_name}
                             </span>
@@ -1181,15 +1195,16 @@ const visibleAnnouncements = announcements.filter(a =>
 
                         {/* 🧱 Message Bubble */}
                         <div
-                          className={`p-3 rounded-lg border max-w-[85%] flex justify-between items-end gap-4
-                            ${getMessageBg(index, socialMessages)}
+                          className={`p-3 ${isSameSender ? "rounded-lg rounded-tl-sm" : "rounded-lg"} 
+                          border max-w-[70%] sm:max-w-[75%] w-fit flex flex-col gap-1
+                          ${getMessageBg(index, socialMessages)}
                           `}
                         >
-                          <p className="text-gray-200 text-sm whitespace-pre-wrap break-words">
+                          <p className="text-gray-200 text-sm whitespace-pre-wrap break-all">
                             {msg.message}
                           </p>
 
-                          <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                          <span className="text-[10px] text-gray-500 self-end whitespace-nowrap">
                             {new Date(msg.created_at).toLocaleTimeString([], {
                               hour: "2-digit",
                               minute: "2-digit",
@@ -1223,8 +1238,6 @@ const visibleAnnouncements = announcements.filter(a =>
           </Card>
 
         </div>
-
-        <TabsContent value="overview" className="space-y-8">
 
         {/* Upcoming Events */}
         <Card className="bg-gray-900 border-gray-700">
