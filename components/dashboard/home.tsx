@@ -84,6 +84,15 @@ interface SelectedDateInfo {
 }
 
 
+interface Announcement {
+  id: string
+  title: string
+  content: string
+  start_date: string
+  end_date: string
+}
+
+
 // Utility functions for date handling
 const formatDate = (date: Date, format: string): string => {
   const months = [
@@ -392,7 +401,7 @@ export default function HomePage() {
   const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
   })
-  const [announcements, setAnnouncements] = useState<any[]>([])
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false)
   const [submittingAnnouncement, setSubmittingAnnouncement] = useState(false)
   const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null)
@@ -703,10 +712,16 @@ const sendSocialMessage = async () => {
 
   if (!user) return
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("employee_id")
+    .eq("id", user.id)
+    .single()
+
   const { data: employee } = await supabase
     .from("employees")
     .select("name")
-    .eq("employee_id", user.id)
+    .eq("employee_id", profile?.employee_id)
     .single()
 
   const { data: roleRow } = await supabase
@@ -948,46 +963,28 @@ const visibleAnnouncements = announcements.filter(a =>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
         </TabsList>
-          {userRole === "manager" && (
-            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => openEditAnnouncement(a)}
-                className="h-7 w-7 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10"
-              >
-                ✏️
-              </Button>
-
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => deleteAnnouncement(a.id)}
-                className="h-7 w-7 text-gray-400 hover:text-red-400 hover:bg-red-500/10"
-              >
-                🗑
-              </Button>
-            </div>
-          )}
       </div>
 
       {/* OVERVIEW TAB */}
       <TabsContent value="overview" className="space-y-6">
 
         {/* Month Selector */}
-        <Card className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 border-none text-white">
+        <Card className="
+          bg-gradient-to-r
+          from-[#ff6b4a]
+          via-[#ff8f6b]
+          to-[#fff2e8]
+          border-none
+          text-gray-900
+          shadow-[0_10px_30px_rgba(255,107,74,0.35)]
+        ">          
           <CardContent className="flex items-center justify-between py-3 px-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => changeMonth("prev")}
-              className="text-white hover:bg-white/20"
-            >
+            <Button variant="ghost" size="sm" className="text-gray-900 hover:bg-black/10">
               <ChevronLeft className="w-4 h-4" />
             </Button>
 
             <div className="text-center">
-              <p className="text-xs uppercase tracking-wide opacity-80">
+              <p className="text-xs uppercase tracking-wide opacity-70">
                 Overview
               </p>
               <p className="text-lg font-semibold">
@@ -1009,9 +1006,27 @@ const visibleAnnouncements = announcements.filter(a =>
           {/* Anouncements */}
         <Card className="bg-gray-900 border-l-4">
           <CardHeader className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-white">Announcements</CardTitle>
-            </div>
+            <CardTitle className="text-white">Announcements</CardTitle>
+
+            {userRole === "manager" && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditingAnnouncementId(null)
+                  setAnnouncement({
+                    title: "",
+                    content: "",
+                    start_date: "",
+                    end_date: "",
+                  })
+                  setIsAnnouncementOpen(true)
+                }}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="space-y-3 text-gray-300">
             {visibleAnnouncements.length === 0 ? (
