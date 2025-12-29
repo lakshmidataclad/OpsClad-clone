@@ -399,6 +399,8 @@ export default function HomePage() {
 
   const [socialMessages, setSocialMessages] = useState<any[]>([])
   const [socialInput, setSocialInput] = useState("")
+  const DARK_GREY = "bg-gray-800 border-gray-700"
+  const DARK_RED = "bg-red-900/30 border-red-800"
 
   const { toast } = useToast()
 
@@ -656,7 +658,7 @@ const sendSocialMessage = async () => {
   const { data: employee } = await supabase
     .from("employees")
     .select("name")
-    .eq("id", user.id)
+    .eq("employee_id", user.id)
     .single()
 
   const { data: roleRow } = await supabase
@@ -1040,6 +1042,13 @@ const visibleAnnouncements = announcements.filter(a =>
                     prev.user_id === msg.user_id &&
                     new Date(prev.created_at).toDateString() ===
                       new Date(msg.created_at).toDateString()
+                    
+                      
+                  // Alternate color ONLY when sender changes
+                  const isAltColor =
+                    !prev || prev.user_id !== msg.user_id
+                      ? index % 2 === 0
+                      : false
 
                   const currentMonth = formatMonthYear(msg.created_at)
                   const prevMonth =
@@ -1084,17 +1093,21 @@ const visibleAnnouncements = announcements.filter(a =>
                         )}
 
                         {/* 🧱 Message Bubble */}
-                        <div className="p-3 rounded-lg bg-gray-800 border border-gray-700 max-w-[85%]">
-                          <p className="text-gray-200 text-sm whitespace-pre-wrap">
+                        <div
+                          className={`p-3 rounded-lg max-w-[85% flex justify-between items-end gap-4
+                            ${isAltColor ? DARK_RED : DARK_GREY}
+                          `}
+                        >
+                          <p className="text-gray-200 text-sm whitespace-pre-wrap break-words">
                             {msg.message}
                           </p>
 
-                          <div className="text-[10px] text-gray-500 text-right mt-1">
+                          <span className="text-[10px] text-gray-500 whitespace-nowrap">
                             {new Date(msg.created_at).toLocaleTimeString([], {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
-                          </div>
+                          </span>
                         </div>
                       </div>
                     </div>
