@@ -397,6 +397,9 @@ export default function HomePage() {
   const [submittingAnnouncement, setSubmittingAnnouncement] = useState(false)
   const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null)
 
+  const [socialMessages, setSocialMessages] = useState<any[]>([])
+  const [socialInput, setSocialInput] = useState("")
+
   const { toast } = useToast()
 
 
@@ -493,14 +496,23 @@ const deleteAnnouncement = async (id: string) => {
       } else {
         setHolidays(holidays || [])
       }
-
+      
+      // Load Announcements
       const { data: announcementData, error } = await supabase
         .from("announcements")
         .select("id, title, content, start_date, end_date, created_at")
         .order("created_at", { ascending: false })
 
-      if (!error) setAnnouncements(announcementData || [])
+      // Load Social Messages
+      const { data: socialData } = await supabase
+        .from("social_messages")
+        .select("*")
+        .order("created_at", { ascending: true })
 
+      setSocialMessages(socialData || [])
+            
+
+    if (!error) setAnnouncements(announcementData || [])
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -562,7 +574,7 @@ const deleteAnnouncement = async (id: string) => {
 
 
 
-
+// Announcement submission handler
 const submitAnnouncement = async () => {
   if (
     !announcement.title ||
@@ -629,6 +641,43 @@ const submitAnnouncement = async () => {
     setSubmittingAnnouncement(false)
   }
 }
+
+
+// Social message submission
+const sendSocialMessage = async () => {
+  if (!socialInput.trim()) return
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return
+
+  const { data: employee } = await supabase
+    .from("employees")
+    .select("name")
+    .eq("id", user.id)
+    .single()
+
+  await supabase.from("social_messages").insert({
+    user_id: user.id,
+    user_name: employee?.name || "Unknown",
+    message: socialInput.trim(),
+  })
+
+  setSocialInput("")
+  loadData()
+}
+
+
+// Format month-year for display for socials
+const formatMonthYear = (date: string) => {
+  return new Date(date).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  })
+}
+
 
 
 
@@ -963,14 +1012,80 @@ const visibleAnnouncements = announcements.filter(a =>
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-900 border-gray-700 min-h-[120px]">
+          <Card className="bg-gray-900 border-gray-700 min-h-[300px] flex flex-col">
             <CardHeader>
-            <CardTitle className="text-white">Socials</CardTitle>
+              <CardTitle className="text-white">Socials</CardTitle>
             </CardHeader>
-            <CardContent className="text-gray-400 text-sm">
-              {/* future content */}
+
+            {/* Social Messages */}
+            <CardContent className="flex-1 overflow-y-auto space-y-3">
+              {socialMessages.length === 0 ? (
+                <p className="text-gray-400 text-sm text-center">
+                  No messages yet 👋
+                </p>
+              ) : (
+                socialMessages.map((msg, index) => {
+                  const currentMonth = formatMonthYear(msg.created_at)
+                  const prevMonth =
+                    index > 0
+                      ? formatMonthYear(socialMessages[index - 1].created_at)
+                      : null
+
+                  const showMonthHeader = index === 0 || currentMonth !== prevMonth
+
+                  return (
+                    <div key={msg.id}>
+                      {/* Month Separator */}
+                      {showMonthHeader && (
+                        <div className="flex justify-center my-4">
+                          <span className="text-xs text-gray-400 bg-gray-800 px-3 py-1 rounded-full border border-gray-700">
+                            {currentMonth}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Message Bubble */}
+                      <div className="p-3 rounded-lg bg-gray-800 border border-gray-700 mb-2">
+                        <div className="flex justify-between text-xs text-gray-400 mb-1">
+                          <span className="font-medium text-white">
+                            {msg.user_name}
+                          </span>
+                          <span>
+                            {new Date(msg.created_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+
+                        <p className="text-gray-200 text-sm whitespace-pre-wrap">
+                          {msg.message}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
             </CardContent>
+
+
+            {/* Input */}
+            <div className="border-t border-gray-700 p-3 flex gap-2">
+              <Input
+                value={socialInput}
+                onChange={(e) => setSocialInput(e.target.value)}
+                placeholder="Type a message…"
+                className="bg-gray-800 border-gray-600 text-white"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") sendSocialMessage()
+                }}
+              />
+              <Button onClick={sendSocialMessage}>
+                Send
+              </Button>
+            </div>
           </Card>
+
         </div>
 
         <TabsContent value="overview" className="space-y-8">
