@@ -395,6 +395,8 @@ export default function HomePage() {
   const [announcements, setAnnouncements] = useState<any[]>([])
   const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false)
   const [submittingAnnouncement, setSubmittingAnnouncement] = useState(false)
+  const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null)
+
   const { toast } = useToast()
 
 
@@ -404,6 +406,38 @@ export default function HomePage() {
     start_date: "",
     end_date: "",
   })
+
+  const openEditAnnouncement = (a: any) => {
+  setEditingAnnouncementId(a.id)
+  setAnnouncement({
+    title: a.title,
+    content: a.content,
+    start_date: a.start_date,
+    end_date: a.end_date,
+  })
+  setIsAnnouncementOpen(true)
+}
+
+const deleteAnnouncement = async (id: string) => {
+  const confirmed = window.confirm("Delete this announcement?")
+  if (!confirmed) return
+
+  const { error } = await supabase
+    .from("announcements")
+    .delete()
+    .eq("id", id)
+
+  if (!error) {
+    toast({ title: "Announcement deleted" })
+    loadData()
+  } else {
+    toast({
+      title: "Error",
+      description: "Failed to delete announcement",
+      variant: "destructive",
+    })
+  }
+}
   
 
   const changeMonth = (direction: "prev" | "next") => {
@@ -547,19 +581,36 @@ const submitAnnouncement = async () => {
   setSubmittingAnnouncement(true)
 
   try {
-    const { error } = await supabase
-      .from("announcements")
-      .insert({
-        title: announcement.title,
-        content: announcement.content,
-        start_date: announcement.start_date,
-        end_date: announcement.end_date,
-      })
+    const query = editingAnnouncementId
+      ? supabase
+          .from("announcements")
+          .update({
+            title: announcement.title,
+            content: announcement.content,
+            start_date: announcement.start_date,
+            end_date: announcement.end_date,
+          })
+          .eq("id", editingAnnouncementId)
+      : supabase
+          .from("announcements")
+          .insert({
+            title: announcement.title,
+            content: announcement.content,
+            start_date: announcement.start_date,
+            end_date: announcement.end_date,
+          })
 
+    const { error } = await query
     if (error) throw error
 
-    toast({ title: "Announcement posted" })
+    toast({
+      title: editingAnnouncementId
+        ? "Announcement updated"
+        : "Announcement posted",
+    })
+
     setIsAnnouncementOpen(false)
+    setEditingAnnouncementId(null)
     setAnnouncement({
       title: "",
       content: "",
@@ -567,17 +618,18 @@ const submitAnnouncement = async () => {
       end_date: "",
     })
 
+    loadData()
   } catch (err) {
-    console.error(err)
     toast({
       title: "Error",
-      description: "Failed to post announcement",
+      description: "Failed to save announcement",
       variant: "destructive",
     })
   } finally {
     setSubmittingAnnouncement(false)
   }
 }
+
 
 
 // Filter announcements for the selected month
@@ -848,14 +900,51 @@ const visibleAnnouncements = announcements.filter(a =>
               visibleAnnouncements.map(a => (
                 <div
                   key={a.id}
-                  className="border border-gray-700 rounded-lg p-3 bg-gray-800"
+                  className="relative rounded-lg p-4 bg-gradient-to-r from-blue-900/40 to-gray-800 border border-blue-700 hover:border-blue-500 transition"
                 >
-                  <p className="text-white font-semibold">{a.title}</p>
-                  <p className="text-sm text-gray-300 mt-1">{a.content}</p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    {a.start_date} → {a.end_date}
+                  {/* Manager Actions */}
+                  {userRole === "manager" && (
+                    <div className="absolute top-2 right-2 flex gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => openEditAnnouncement(a)}
+                        className="text-blue-400 hover:text-blue-300"
+                      >
+                        ✏️
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => deleteAnnouncement(a.id)}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        🗑
+                      </Button>
+                    </div>
+                  )}
+
+                  <p className="text-white font-semibold text-base">
+                    {a.title}
                   </p>
+
+                  <p className="text-sm text-gray-300 mt-1 leading-relaxed">
+                    {a.content}
+                  </p>
+
+                  <div className="mt-3 text-xs text-gray-400 flex items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className="border-blue-500 text-blue-400"
+                    >
+                      Active
+                    </Badge>
+                    <span>
+                      {a.start_date} → {a.end_date}
+                    </span>
+                  </div>
                 </div>
+
               ))
             )}
           </CardContent>
@@ -1068,7 +1157,7 @@ const visibleAnnouncements = announcements.filter(a =>
       <DialogContent className="bg-gray-950 border-gray-700 text-white">
         <DialogHeader>
           <DialogTitle className="text-white">
-            Add Announcement
+            {editingAnnouncementId ? "Edit Announcement" : "Add Announcement"}
           </DialogTitle>
           <DialogDescription className="text-gray-400">
             This will be visible to all employees.
@@ -1148,7 +1237,11 @@ const visibleAnnouncements = announcements.filter(a =>
             ) : (
               <Plus className="w-4 h-4 mr-2" />
             )}
-            {submittingAnnouncement ? "Posting..." : "Post Announcement"}
+            {submittingAnnouncement
+              ? "Posting..."
+              : editingAnnouncementId
+                ? "Update Announcement"
+                : "Post Announcement"}          
           </Button>
         </DialogFooter>
       </DialogContent>
