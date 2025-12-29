@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -401,6 +401,13 @@ export default function HomePage() {
   const [socialInput, setSocialInput] = useState("")
   const DARK_GREY = "bg-gray-800 border-gray-700"
   const DARK_RED = "bg-red-900/30 border-red-800"
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: socialMessages.length > 1 ? "smooth" : "auto",
+    })
+  }, [socialMessages])
+
 
   const { toast } = useToast()
 
@@ -1039,13 +1046,13 @@ const visibleAnnouncements = announcements.filter(a =>
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-900 border-gray-700 min-h-[300px] flex flex-col">
+          <Card className="bg-gray-900 border-gray-700 h-[420px] flex flex-col">
             <CardHeader>
               <CardTitle className="text-white">Socials</CardTitle>
             </CardHeader>
 
             {/* Social Messages */}
-            <CardContent className="flex-1 overflow-y-auto space-y-3">
+            <CardContent className="flex-1 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
               {socialMessages.length === 0 ? (
                 <p className="text-gray-400 text-sm text-center">
                   No messages yet 👋
@@ -1124,10 +1131,12 @@ const visibleAnnouncements = announcements.filter(a =>
                   )
                 })
               )}
+              {/* 🔽 AUTO-SCROLL ANCHOR */}
+              <div ref={messagesEndRef} />
             </CardContent>
 
             {/* Input */}
-            <div className="border-t border-gray-700 p-3 flex gap-2">
+            <div className="border-t border-gray-700 p-3 flex gap-2 shrink-0">
               <Input
                 value={socialInput}
                 onChange={(e) => setSocialInput(e.target.value)}
