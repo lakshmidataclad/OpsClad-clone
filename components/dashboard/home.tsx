@@ -419,6 +419,30 @@ export default function HomePage() {
     end_date: "",
   })
 
+  const getAnnouncementStatus = (
+  start: string,
+  end: string
+  ): "active" | "inactive" | "upcoming" => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const startDate = new Date(start)
+    const endDate = new Date(end)
+
+    if (today < startDate) return "upcoming"
+    if (today > endDate) return "inactive"
+    return "active"
+  }
+
+  const announcementStyles = {
+  active:
+    "from-blue-900/40 to-gray-800 border-blue-700 hover:border-blue-500",
+  upcoming:
+    "from-orange-900/30 to-gray-800 border-orange-700 hover:border-orange-500",
+  inactive:
+    "from-gray-800/40 to-gray-900 border-gray-700 opacity-70",
+  }
+
   const openEditAnnouncement = (a: any) => {
   setEditingAnnouncementId(a.id)
   setAnnouncement({
@@ -925,10 +949,25 @@ const visibleAnnouncements = announcements.filter(a =>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
         </TabsList>
           {userRole === "manager" && (
-            <Button size="sm" onClick={() => setIsAnnouncementOpen(true)}>
-              <Plus className="w-4 h-4 mr-1" />
-              Add Announcement
-            </Button>
+            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => openEditAnnouncement(a)}
+                className="h-7 w-7 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10"
+              >
+                ✏️
+              </Button>
+
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => deleteAnnouncement(a.id)}
+                className="h-7 w-7 text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+              >
+                🗑
+              </Button>
+            </div>
           )}
       </div>
 
@@ -980,11 +1019,16 @@ const visibleAnnouncements = announcements.filter(a =>
                 No announcements for this month
               </p>
             ) : (
-              visibleAnnouncements.map(a => (
-                <div
-                  key={a.id}
-                  className="relative rounded-lg p-4 bg-gradient-to-r from-blue-900/40 to-gray-800 border border-blue-700 hover:border-blue-500 transition"
-                >
+              visibleAnnouncements.map(a => {
+                const status = getAnnouncementStatus(a.start_date, a.end_date)
+
+                return (
+                  <div
+                    key={a.id}
+                    className={`relative group rounded-lg p-4 bg-gradient-to-r border transition
+                      ${announcementStyles[status]}
+                    `}
+                  >
                   {/* Manager Actions */}
                   {userRole === "manager" && (
                     <div className="absolute top-2 right-2 flex gap-1">
@@ -1018,17 +1062,28 @@ const visibleAnnouncements = announcements.filter(a =>
                   <div className="mt-3 text-xs text-gray-400 flex items-center gap-2">
                     <Badge
                       variant="outline"
-                      className="border-blue-500 text-blue-400"
+                      className={
+                        status === "active"
+                          ? "border-blue-500 text-blue-400"
+                          : status === "upcoming"
+                          ? "border-orange-500 text-orange-400"
+                          : "border-gray-500 text-gray-400"
+                      }
                     >
-                      Active
+                      {status === "active"
+                        ? "Active"
+                        : status === "upcoming"
+                        ? "OTW"
+                        : "Inactive"}
                     </Badge>
+
                     <span>
                       {a.start_date} → {a.end_date}
                     </span>
                   </div>
                 </div>
 
-              ))
+              )})
             )}
           </CardContent>
         </Card>
