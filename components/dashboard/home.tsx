@@ -1270,9 +1270,6 @@ const visibleAnnouncements = announcements.filter(a =>
           </CardContent>
         </Card>
       </TabsContent>
-    </TabsContent>
-
-
 
       {/* CALENDAR TAB — YOUR EXISTING CODE STARTS HERE */}
       <TabsContent value="calendar">
