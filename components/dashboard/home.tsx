@@ -659,15 +659,23 @@ const sendSocialMessage = async () => {
     .eq("id", user.id)
     .single()
 
+  const { data: roleRow } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .single()
+
   await supabase.from("social_messages").insert({
     user_id: user.id,
     user_name: employee?.name || "Unknown",
+    user_role: roleRow?.role || "employee",
     message: socialInput.trim(),
   })
 
   setSocialInput("")
   loadData()
 }
+
 
 
 // Format month-year for display for socials
@@ -1025,6 +1033,14 @@ const visibleAnnouncements = announcements.filter(a =>
                 </p>
               ) : (
                 socialMessages.map((msg, index) => {
+                  const prev = index > 0 ? socialMessages[index - 1] : null
+
+                  const isSameSender =
+                    prev &&
+                    prev.user_id === msg.user_id &&
+                    new Date(prev.created_at).toDateString() ===
+                      new Date(msg.created_at).toDateString()
+
                   const currentMonth = formatMonthYear(msg.created_at)
                   const prevMonth =
                     index > 0
@@ -1035,7 +1051,7 @@ const visibleAnnouncements = announcements.filter(a =>
 
                   return (
                     <div key={msg.id}>
-                      {/* Month Separator */}
+                      {/* 📅 Month Separator */}
                       {showMonthHeader && (
                         <div className="flex justify-center my-4">
                           <span className="text-xs text-gray-400 bg-gray-800 px-3 py-1 rounded-full border border-gray-700">
@@ -1044,30 +1060,48 @@ const visibleAnnouncements = announcements.filter(a =>
                         </div>
                       )}
 
-                      {/* Message Bubble */}
-                      <div className="p-3 rounded-lg bg-gray-800 border border-gray-700 mb-2">
-                        <div className="flex justify-between text-xs text-gray-400 mb-1">
-                          <span className="font-medium text-white">
-                            {msg.user_name}
-                          </span>
-                          <span>
+                      {/* 💬 Message */}
+                      <div className={`mb-2 ${isSameSender ? "ml-6" : ""}`}>
+                        {/* 👤 Sender Header (only once per group) */}
+                        {!isSameSender && (
+                          <div className="flex items-center gap-2 mb-1 text-xs">
+                            <span className="font-semibold text-white">
+                              {msg.user_name}
+                            </span>
+
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px]
+                                ${
+                                  msg.user_role === "manager"
+                                    ? "bg-orange-600/20 text-orange-400 border border-orange-500"
+                                    : "bg-blue-600/20 text-blue-400 border border-blue-500"
+                                }
+                              `}
+                            >
+                              {msg.user_role}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* 🧱 Message Bubble */}
+                        <div className="p-3 rounded-lg bg-gray-800 border border-gray-700 max-w-[85%]">
+                          <p className="text-gray-200 text-sm whitespace-pre-wrap">
+                            {msg.message}
+                          </p>
+
+                          <div className="text-[10px] text-gray-500 text-right mt-1">
                             {new Date(msg.created_at).toLocaleTimeString([], {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
-                          </span>
+                          </div>
                         </div>
-
-                        <p className="text-gray-200 text-sm whitespace-pre-wrap">
-                          {msg.message}
-                        </p>
                       </div>
                     </div>
                   )
                 })
               )}
             </CardContent>
-
 
             {/* Input */}
             <div className="border-t border-gray-700 p-3 flex gap-2">
