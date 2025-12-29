@@ -445,6 +445,23 @@ const deleteAnnouncement = async (id: string) => {
 }
   
 
+const getMessageBg = (index: number, messages: any[]) => {
+  if (index === 0) return "bg-gray-800 border-gray-700"
+
+  const prev = messages[index - 1]
+  const curr = messages[index]
+
+  // Same sender → keep previous colour
+  if (prev.user_id === curr.user_id) {
+    return getMessageBg(index - 1, messages)
+  }
+
+  // New sender → alternate
+  return index % 2 === 0
+    ? "bg-red-900/30 border-red-800"
+    : "bg-gray-800 border-gray-700"
+}
+
   const changeMonth = (direction: "prev" | "next") => {
     setSelectedMonth(prev => {
       const d = new Date(prev)
@@ -1042,13 +1059,6 @@ const visibleAnnouncements = announcements.filter(a =>
                     prev.user_id === msg.user_id &&
                     new Date(prev.created_at).toDateString() ===
                       new Date(msg.created_at).toDateString()
-                    
-                      
-                  // Alternate color ONLY when sender changes
-                  const isAltColor =
-                    !prev || prev.user_id !== msg.user_id
-                      ? index % 2 === 0
-                      : false
 
                   const currentMonth = formatMonthYear(msg.created_at)
                   const prevMonth =
@@ -1094,8 +1104,8 @@ const visibleAnnouncements = announcements.filter(a =>
 
                         {/* 🧱 Message Bubble */}
                         <div
-                          className={`p-3 rounded-lg max-w-[85% flex justify-between items-end gap-4
-                            ${isAltColor ? DARK_RED : DARK_GREY}
+                          className={`p-3 rounded-lg border max-w-[85%] flex justify-between items-end gap-4
+                            ${getMessageBg(index, socialMessages)}
                           `}
                         >
                           <p className="text-gray-200 text-sm whitespace-pre-wrap break-words">
