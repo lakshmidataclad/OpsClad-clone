@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef, useLayoutEffect } from "react"
+import { useState, useEffect, useMemo, useRef, useLayoutEffect,  } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -17,6 +17,8 @@ import {
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
+import EmojiPicker from "emoji-picker-react"
+
 
 import {
   Tabs,
@@ -425,6 +427,9 @@ export default function HomePage() {
       behavior: socialMessages.length > 1 ? "smooth" : "auto",
     })
   }, [socialMessages])
+
+
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
 
 
   const { toast } = useToast()
@@ -1223,15 +1228,40 @@ const visibleAnnouncements = announcements.filter(a =>
 
             {/* Input */}
             <div className="border-t border-gray-700 p-3 flex gap-2 shrink-0">
-              <Input
+              <Textarea
                 value={socialInput}
                 onChange={(e) => setSocialInput(e.target.value)}
                 placeholder="Type a message…"
-                className="bg-gray-800 border-gray-600 text-white"
+                className="bg-gray-800 border-gray-600 text-white resize-none"
+                rows={2}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && socialInput.trim()) sendSocialMessage()
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    sendSocialMessage()
+                  }
                 }}
               />
+              <div className="relative">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowEmojiPicker(v => !v)}
+                >
+                  😊
+                </Button>
+
+                {showEmojiPicker && (
+                  <div className="absolute bottom-12 right-0 z-50">
+                    <EmojiPicker
+                      onEmojiClick={(emoji) =>
+                        setSocialInput(prev => prev + emoji.emoji)
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+
               <Button onClick={sendSocialMessage}>
                 Send
               </Button>
