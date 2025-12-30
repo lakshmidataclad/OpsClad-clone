@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useMemo, useRef, useLayoutEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -419,7 +419,8 @@ export default function HomePage() {
   const [socialMessages, setSocialMessages] = useState<SocialMessage[]>([])
   const [socialInput, setSocialInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
+
+  useLayoutEffect(() => {
     messagesEndRef.current?.scrollIntoView({
       behavior: socialMessages.length > 1 ? "smooth" : "auto",
     })
@@ -493,7 +494,7 @@ const deleteAnnouncement = async (id: string) => {
 }
   
 
-const getMessageBg = (index: number, messages: any[]) => {
+const getMessageBg = (index: number, messages: SocialMessage[]) => {
   if (index === 0) return "bg-gray-800 border-gray-700"
 
   const prev = messages[index - 1]
@@ -1136,7 +1137,7 @@ const visibleAnnouncements = announcements.filter(a =>
             </CardHeader>
 
             {/* Social Messages */}
-            <CardContent className="flex-1 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+            <CardContent className="flex-1 overflow-y-auto space-y-3 no-scrollbar">
               {socialMessages.length === 0 ? (
                 <p className="text-gray-400 text-sm text-center">
                   No messages yet 👋
@@ -1228,7 +1229,7 @@ const visibleAnnouncements = announcements.filter(a =>
                 placeholder="Type a message…"
                 className="bg-gray-800 border-gray-600 text-white"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") sendSocialMessage()
+                  if (e.key === "Enter" && socialInput.trim()) sendSocialMessage()
                 }}
               />
               <Button onClick={sendSocialMessage}>
