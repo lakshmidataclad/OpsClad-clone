@@ -17,8 +17,6 @@ import {
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
-import EmojiPicker, { Theme } from "emoji-picker-react"
-
 
 import {
   Tabs,
@@ -429,9 +427,6 @@ export default function HomePage() {
   }, [socialMessages])
 
 
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-
-
   const { toast } = useToast()
 
 
@@ -752,7 +747,6 @@ const sendSocialMessage = async () => {
   })
 
   setSocialInput("")
-  setShowEmojiPicker(false)
   loadData()
 }
 
@@ -1242,30 +1236,6 @@ const visibleAnnouncements = announcements.filter(a =>
                   }
                 }}
               />
-              <div className="relative">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowEmojiPicker(v => !v)}
-                >
-                  😊
-                </Button>
-
-                {showEmojiPicker && (
-                  <div className="absolute bottom-12 right-0 z-50"
-                    onMouseLeave={() => setShowEmojiPicker(false)}
->
-                    <EmojiPicker
-                      theme={Theme.AUTO}
-                      onEmojiClick={(emoji) =>
-                        setSocialInput(prev => prev + emoji.emoji)
-                      }
-                    />
-                  </div>
-                )}
-              </div>
-
               <Button onClick={sendSocialMessage}>
                 Send
               </Button>
