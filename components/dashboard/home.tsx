@@ -1010,10 +1010,10 @@ const visibleAnnouncements = announcements
           </Button>
 
             <div className="text-center">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/80 font-semibold">
+              <p className="text-xs uppercase tracking-[0.2em] text-[#70696f]/80 font-semibold">
                 Overview
               </p>
-              <p className="text-xl font-extrabold tracking-wide text-white drop-shadow">
+              <p className="text-xl font-extrabold tracking-wide text-[#70696f] drop-shadow">
                 {formatDate(selectedMonth, "MMMM yyyy")}
               </p>
             </div>
