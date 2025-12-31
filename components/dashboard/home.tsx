@@ -788,14 +788,25 @@ const monthEnd = new Date(
   0
 )
 
-const visibleAnnouncements = announcements.filter(a =>
-  doesAnnouncementOverlapMonth(
-    a.start_date,
-    a.end_date,
-    monthStart,
-    monthEnd
+const visibleAnnouncements = announcements
+  .filter(a =>
+    doesAnnouncementOverlapMonth(
+      a.start_date,
+      a.end_date,
+      monthStart,
+      monthEnd
+    )
   )
-)
+  .filter(a => {
+    const status = getAnnouncementStatus(a.start_date, a.end_date)
+
+    // Employees should NOT see upcoming announcements
+    if (userRole === "employee" && status === "upcoming") {
+      return false
+    }
+
+    return true
+  })
 
 
 
@@ -981,9 +992,9 @@ const visibleAnnouncements = announcements.filter(a =>
         <Card
           className="
             bg-gradient-to-r
-            from-[#ff6b4a]
-            via-[#ff8f6b]
-            to-[#0f172a]
+            from-[#ff6b6b]
+            via-[#f7f7f7]
+            to-[#1b2a41]
             border-none
             shadow-[0_12px_35px_rgba(15,23,42,0.55)]
           "
@@ -1101,10 +1112,12 @@ const visibleAnnouncements = announcements.filter(a =>
                       }
                     >
                       {status === "active"
-                        ? "Active"
-                        : status === "upcoming"
-                        ? "OTW"
-                        : "Inactive"}
+                      ? "Active"
+                      : status === "inactive"
+                      ? "Inactive"
+                      : userRole === "manager"
+                      ? "Upcoming"
+                      : null}
                     </Badge>
 
                     <span>
