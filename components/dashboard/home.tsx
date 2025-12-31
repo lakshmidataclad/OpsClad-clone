@@ -1235,13 +1235,16 @@ const visibleAnnouncements = announcements
             </CardContent>
 
             {/* Input */}
-            <div className="border-t border-gray-700 p-3 flex gap-2 shrink-0">
+            <div className="border-t border-gray-700 p-2 flex gap-2 items-end shrink-0">
               <Textarea
                 value={socialInput}
                 onChange={(e) => setSocialInput(e.target.value)}
                 placeholder="Type a message…"
-                className="bg-gray-800 border-gray-600 text-white resize-none"
-                rows={2}
+                rows={1}
+                className="
+                  bg-gray-800 border-gray-600 text-white resize-none
+                  h-10 min-h-[40px] max-h-[40px] leading-tight
+                "
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault()

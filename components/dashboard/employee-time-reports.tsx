@@ -11,6 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Download, BarChart2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+
 export default function EmployeeReportsTab() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [userProfile, setUserProfile] = useState<any>(null)
@@ -425,7 +432,27 @@ export default function EmployeeReportsTab() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+  <div className="p-6 bg-gray-800 min-h-screen">
+    <Tabs defaultValue="reports">
+      <div className="mb-6 flex items-center justify-between">
+        <TabsList className="bg-gray-900">
+          <TabsTrigger value="manual_entry">Manual Entry</TabsTrigger>
+          <TabsTrigger value="reports">Reports</TabsTrigger>
+        </TabsList>
+      </div>
+
+      <TabsContent value="manual_entry">
+        <Card className="bg-gray-900 border-gray-700 min-h-[300px] flex items-center justify-center">
+          <div className="text-center text-gray-400 space-y-2">
+            <p className="text-lg font-semibold">🚧 Coming Soon</p>
+            <p className="text-sm">
+              This section is reserved for future enhancements.
+            </p>
+          </div>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="reports" className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -705,6 +732,8 @@ export default function EmployeeReportsTab() {
           )}
         </CardContent>
       </Card>
+      </TabsContent>
+    </Tabs>
     </div>
   )
 }
