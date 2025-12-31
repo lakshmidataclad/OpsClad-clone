@@ -31,6 +31,14 @@ export default function EmployeeReportsTab() {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
+  // Manual entry state
+  const [manualDate, setManualDate] = useState("")
+  const [manualHours, setManualHours] = useState<number>(0)
+  const [manualClient, setManualClient] = useState("")
+  const [manualProject, setManualProject] = useState("")
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false)
+
+
 
   const normalizeToISO = (dateStr: string) => {
     if (!dateStr) return ""
@@ -45,6 +53,26 @@ export default function EmployeeReportsTab() {
     const [d, m, y] = dateStr.split("-")
     return `${y}-${m}-${d}`
   }
+
+  const handleManualHoursChange = (value: number) => {
+    if (value > 8) {
+      setManualHours(8)
+      toast({
+        title: "Invalid hours",
+        description: "You cannot enter more than 8 hours per day.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (value < 0) {
+      setManualHours(0)
+      return
+    }
+
+    setManualHours(value)
+  }
+
 
   // Remove employee filter since this is employee view
   const [filters, setFilters] = useState<Omit<FilterOptions, 'employee'>>({
@@ -286,6 +314,73 @@ export default function EmployeeReportsTab() {
     applyFilters()
   }
 
+  const submitManualEntry = async () => {
+    if (!manualDate || !manualClient || !manualProject) {
+      toast({
+        title: "Missing fields",
+        description: "Please complete all fields.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (manualHours <= 0 || manualHours > 8) {
+      toast({
+        title: "Invalid hours",
+        description: "Hours must be between 0 and 8.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsSubmittingManual(true)
+
+    try {
+      const day = new Date(manualDate).toLocaleDateString("en-US", {
+        weekday: "long",
+      })
+
+      const { error } = await supabase.from("timesheets").insert({
+        date: manualDate,
+        day,
+        hours: manualHours,
+        required_hours: 8,
+        client: manualClient,
+        project: manualProject,
+        activity: "manual",
+        employee_id: userProfile.profiles.employee_id,
+        employee_name: userProfile.profiles.username,
+        sender_email: currentUser.email,
+      })
+
+      if (error) throw error
+
+      toast({
+        title: "Entry added",
+        description: "Manual timesheet entry submitted successfully.",
+      })
+
+      // Reset form
+      setManualDate("")
+      setManualHours(0)
+      setManualClient("")
+      setManualProject("")
+
+      // Refresh reports
+      loadCombinedData(userProfile.profiles.employee_id)
+    } catch (err) {
+      console.error(err)
+      toast({
+        title: "Submission failed",
+        description: "Unable to save manual entry.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmittingManual(false)
+    }
+  }
+
+
   const updateSummaryStats = (data: TimesheetEntry[]) => {
     // Calculate summary statistics
     const totalHours = data.reduce((sum, item) => sum + item.hours, 0)
@@ -442,15 +537,67 @@ export default function EmployeeReportsTab() {
       </div>
 
       <TabsContent value="manual_entry">
-        <Card className="bg-gray-900 border-gray-700 min-h-[300px] flex items-center justify-center">
-          <div className="text-center text-gray-400 space-y-2">
-            <p className="text-lg font-semibold">🚧 Coming Soon</p>
-            <p className="text-sm">
-              This section is reserved for future enhancements.
-            </p>
-          </div>
+        <Card className="bg-gray-900 border-gray-700 max-w-xl">
+          <CardHeader>
+            <CardTitle className="text-white">Manual Timesheet Entry</CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <Input
+              type="date"
+              value={manualDate}
+              onChange={(e) => setManualDate(e.target.value)}
+              className="bg-black text-white"
+            />
+
+            <Input
+              type="number"
+              min={0}
+              max={8}
+              step={0.25}
+              placeholder="Hours worked (max 8)"
+              value={manualHours}
+              onChange={(e) => handleManualHoursChange(Number(e.target.value))}
+              className="bg-black text-white"
+            />
+
+            <Select value={manualClient} onValueChange={setManualClient}>
+              <SelectTrigger className="bg-black text-white">
+                <SelectValue placeholder="Select Client" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map((client) => (
+                  <SelectItem key={client} value={client}>
+                    {client}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={manualProject} onValueChange={setManualProject}>
+              <SelectTrigger className="bg-black text-white">
+                <SelectValue placeholder="Select Project" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((project) => (
+                  <SelectItem key={project} value={project}>
+                    {project}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button
+              onClick={submitManualEntry}
+              disabled={isSubmittingManual}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {isSubmittingManual ? "Submitting..." : "Submit Entry"}
+            </Button>
+          </CardContent>
         </Card>
       </TabsContent>
+
 
       <TabsContent value="reports" className="space-y-6">
       {/* Header */}
@@ -639,6 +786,13 @@ export default function EmployeeReportsTab() {
                         </td>
                         <td className="border-b px-4 py-2 text-black">
                           {entry.required_hours !== undefined ? entry.required_hours : "N/A"}
+                        </td>
+                        <td className="border-b px-4 py-2 text-black">
+                          {entry.activity === "manual" ? (
+                            <span className="text-orange-600 font-semibold">Manual</span>
+                          ) : (
+                            entry.activity
+                          )}
                         </td>
                       </tr>
                     ))}
