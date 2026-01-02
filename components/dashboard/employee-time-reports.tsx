@@ -74,17 +74,24 @@ export default function EmployeeReportsTab() {
     setManualHours(value)
   }
 
+  const formatToMMDDYYYY = (isoDate: string) => {
+    const [year, month, day] = isoDate.split("-")
+    return `${month}/${day}/${year}`
+  }
+
   const checkEntryForDate = async (date: string) => {
     if (!date || !userProfile?.profiles?.employee_id) return
 
     setDateChecked(false)
     setExistingEntry(null)
 
+    const formattedDate = formatToMMDDYYYY(date)
+
     const { data, error } = await supabase
       .from("timesheets")
       .select("*")
       .eq("employee_id", userProfile.profiles.employee_id)
-      .eq("date", date)
+      .eq("date", formattedDate)
       .maybeSingle()
 
     if (!error && data) {
@@ -93,6 +100,7 @@ export default function EmployeeReportsTab() {
 
     setDateChecked(true)
   }
+
 
 
   // Remove employee filter since this is employee view
