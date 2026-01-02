@@ -558,7 +558,7 @@ export default function EmployeeReportsTab() {
 
   return (
   <div className="p-6 bg-gray-800 min-h-screen">
-    <Tabs defaultValue="reports">
+    <Tabs defaultValue="manual_entry" className="w-full">
       <div className="mb-6 flex items-center justify-between">
         <TabsList className="bg-gray-900">
           <TabsTrigger value="manual_entry">Manual Entry</TabsTrigger>
