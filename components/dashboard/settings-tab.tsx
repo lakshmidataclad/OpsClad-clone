@@ -47,8 +47,11 @@ export default function SettingsTab() {
   const [isLoadingHolidayData, setIsLoadingHolidayData] = useState(false)
   const [isUploadingHoliday, setIsUploadingHoliday] = useState(false)
   const [isDraggingHoliday, setIsDraggingHoliday] = useState(false)
-
-
+  const currentYear = new Date().getFullYear()
+  const [selectedYear, setSelectedYear] = useState(currentYear)
+  const filteredHolidays = holidayData?.filter(h =>
+    new Date(h.holiday_date).getFullYear() === selectedYear
+  )
 
 
   // Load data on component mount - same as ReminderEmailTab
@@ -832,7 +835,22 @@ export default function SettingsTab() {
                     <DialogDescription>
                       Displaying the first 50 rows of the currently stored CSV file.
                     </DialogDescription>
-
+                    <div className="flex items-center gap-3 mb-4">
+                      <Label className="text-sm font-medium">Year</Label>
+                      <select
+                        className="border rounded px-3 py-1 text-sm"
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      >
+                        {[...new Set(
+                          holidayData?.map(h => new Date(h.holiday_date).getFullYear())
+                        )]
+                          .sort((a, b) => b - a)
+                          .map(year => (
+                            <option key={year} value={year}>{year}</option>
+                          ))}
+                      </select>
+                    </div>
                     <div className="mt-4">
                       {isLoadingHolidayData ? (
                         <div className="flex justify-center items-center h-32">

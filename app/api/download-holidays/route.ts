@@ -19,9 +19,13 @@ export async function GET(request: Request) {
   csvRows.push("holiday,holiday_date,holiday_description");
 
   data.forEach((h) => {
+    const escape = (v: string) =>
+      `"${String(v ?? "").replace(/"/g, '""')}"`;
+
     csvRows.push(
-      `${h.holiday},${h.holiday_date},${h.holiday_description || ""}`
+      `${escape(h.holiday)},${h.holiday_date},${escape(h.holiday_description)}`
     );
+
   });
 
   const csv = csvRows.join("\n");
