@@ -9,6 +9,7 @@ import { AuthProvider } from "@/hooks/use-auth" // Import the AuthProvider
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
+  
   title: "OpsClad",
   description: "by DataClad",
   generator: 'v0.dev'
@@ -22,6 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="icon" href="%PUBLIC_URL%/icon.ico" />
         <link
           href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;400;500;600&display=swap"
           rel="stylesheet"

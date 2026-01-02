@@ -993,7 +993,6 @@ const visibleAnnouncements = announcements
           className="
             bg-gradient-to-r
             from-[#ff6b6b]
-            via-[#f7f7f7]
             to-[#1b2a41]
             border-none
             shadow-[0_12px_35px_rgba(15,23,42,0.55)]
@@ -1010,10 +1009,10 @@ const visibleAnnouncements = announcements
           </Button>
 
             <div className="text-center">
-              <p className="text-xs uppercase tracking-[0.2em] text-[#70696f]/80 font-semibold">
+              <p className="text-xs uppercase tracking-[0.2em] text-[#ffffff]/80 font-semibold">
                 Overview
               </p>
-              <p className="text-xl font-extrabold tracking-wide text-[#70696f] drop-shadow">
+              <p className="text-xl font-extrabold tracking-wide text-[#ffffff] drop-shadow">
                 {formatDate(selectedMonth, "MMMM yyyy")}
               </p>
             </div>

@@ -37,7 +37,8 @@ export default function EmployeeReportsTab() {
   const [manualClient, setManualClient] = useState("")
   const [manualProject, setManualProject] = useState("")
   const [isSubmittingManual, setIsSubmittingManual] = useState(false)
-
+  const [existingEntry, setExistingEntry] = useState<TimesheetEntry | null>(null)
+  const [dateChecked, setDateChecked] = useState(false)
 
 
   const normalizeToISO = (dateStr: string) => {
@@ -71,6 +72,26 @@ export default function EmployeeReportsTab() {
     }
 
     setManualHours(value)
+  }
+
+  const checkEntryForDate = async (date: string) => {
+    if (!date || !userProfile?.profiles?.employee_id) return
+
+    setDateChecked(false)
+    setExistingEntry(null)
+
+    const { data, error } = await supabase
+      .from("timesheets")
+      .select("*")
+      .eq("employee_id", userProfile.profiles.employee_id)
+      .eq("date", date)
+      .maybeSingle()
+
+    if (!error && data) {
+      setExistingEntry(data)
+    }
+
+    setDateChecked(true)
   }
 
 
@@ -333,6 +354,15 @@ export default function EmployeeReportsTab() {
       return
     }
 
+    if (existingEntry) {
+      toast({
+        title: "Entry already exists",
+        description: "You already have a timesheet entry for this date.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSubmittingManual(true)
 
     try {
@@ -546,9 +576,39 @@ export default function EmployeeReportsTab() {
             <Input
               type="date"
               value={manualDate}
-              onChange={(e) => setManualDate(e.target.value)}
+              onChange={(e) => {
+                setManualDate(e.target.value)
+                checkEntryForDate(e.target.value)
+              }}
               className="bg-black text-white"
             />
+
+            {dateChecked && (
+              existingEntry ? (
+                <div className="bg-yellow-900/20 border border-yellow-600/40 text-yellow-300 rounded-md p-3 text-sm">
+                  An entry already exists for this date.
+                </div>
+              ) : (
+                <div className="bg-green-900/20 border border-green-600/40 text-green-300 rounded-md p-3 text-sm">
+                  No data exists for this date. You can add a new entry.
+                </div>
+              )
+            )}
+
+            {existingEntry && (
+              <div className="bg-gray-950 border border-gray-700 rounded-lg p-4">
+                <h4 className="text-white font-medium mb-2">Existing Entry</h4>
+
+                <div className="grid grid-cols-2 gap-3 text-sm text-gray-300">
+                  <div>Date: {existingEntry.date}</div>
+                  <div>Day: {existingEntry.day}</div>
+                  <div>Client: {existingEntry.client}</div>
+                  <div>Project: {existingEntry.project}</div>
+                  <div>Hours: {existingEntry.hours}</div>
+                  <div>Activity: {existingEntry.activity}</div>
+                </div>
+              </div>
+            )}
 
             <Input
               type="number"
@@ -586,6 +646,22 @@ export default function EmployeeReportsTab() {
                 ))}
               </SelectContent>
             </Select>
+
+            {dateChecked && !existingEntry && manualClient && manualProject && manualHours > 0 && (
+              <div className="bg-blue-900/20 border border-blue-600/40 rounded-lg p-4">
+                <h4 className="text-blue-300 font-medium mb-2">New Entry Preview</h4>
+
+                <div className="grid grid-cols-2 gap-3 text-sm text-blue-200">
+                  <div>Date: {manualDate}</div>
+                  <div>Hours: {manualHours}</div>
+                  <div>Client: {manualClient}</div>
+                  <div>Project: {manualProject}</div>
+                  <div>Required Hours: 8</div>
+                  <div>Activity: Manual</div>
+                </div>
+              </div>
+            )}
+
 
             <Button
               onClick={submitManualEntry}
