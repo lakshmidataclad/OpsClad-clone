@@ -741,8 +741,8 @@ const sendSocialMessage = async () => {
 
   await supabase.from("social_messages").insert({
     user_id: user.id,
-    user_name: employee?.name || "OPSCLAD",
-    user_role: roleRow?.role || "employee",
+    user_name: employee?.name || "DATACLAD",
+    user_role: roleRow?.role || "Employee",
     message: socialInput.trim(),
   })
 
