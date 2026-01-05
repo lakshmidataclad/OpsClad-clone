@@ -32,8 +32,6 @@ export default function EmployeeReportsTab() {
   const { toast } = useToast()
 
   // Manual entry state
-  const [manualDate, setManualDate] = useState("")
-
   // Date range
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
@@ -49,8 +47,6 @@ export default function EmployeeReportsTab() {
   const [manualClient, setManualClient] = useState("")
   const [manualProject, setManualProject] = useState("")
   const [isSubmittingManual, setIsSubmittingManual] = useState(false)
-  const [existingEntry, setExistingEntry] = useState<TimesheetEntry | null>(null)
-  const [dateChecked, setDateChecked] = useState(false)
   const [assignedProjects, setAssignedProjects] = useState<{
     project: string
     client: string
@@ -95,28 +91,6 @@ export default function EmployeeReportsTab() {
     return `${month}/${day}/${year}`
   }
 
-  const checkEntryForDate = async (date: string) => {
-    if (!date || !userProfile?.profiles?.employee_id) return
-
-    setDateChecked(false)
-    setExistingEntry(null)
-
-    const formattedDate = formatToMMDDYYYY(date)
-
-    const { data, error } = await supabase
-      .from("timesheets")
-      .select("*")
-      .eq("employee_id", userProfile.profiles.employee_id)
-      .eq("date", formattedDate)
-      .maybeSingle()
-
-    if (!error && data) {
-      setExistingEntry(data)
-    }
-
-    setDateChecked(true)
-  }
-
   const checkEntriesForRange = async () => {
   if (!dateFrom || !dateTo || !userProfile?.profiles?.employee_id) return
 
@@ -131,13 +105,15 @@ export default function EmployeeReportsTab() {
     .eq("employee_id", userProfile.profiles.employee_id)
     .in("date", formattedDates)
 
+  const map = new Map(data?.map(d => [normalizeToISO(d.date), d]))
+
   const mapped = datesISO.map(date => {
-    const match = data?.find(d => normalizeToISO(d.date) === date)
-    return {
-      date,
-      exists: !!match,
-      existing: match,
-    }
+    const match = map.get(date)
+      return {
+        date,
+        exists: !!match,
+        existing: match,
+      }
   })
 
   setRangeStatus(mapped)
@@ -157,6 +133,15 @@ export default function EmployeeReportsTab() {
 
   return dates
 }
+
+useEffect(() => {
+  if (dateFrom && dateTo) {
+    checkEntriesForRange()
+  } else {
+    setRangeStatus([])
+  }
+}, [dateFrom, dateTo])
+
 
   // Remove employee filter since this is employee view
   const [filters, setFilters] = useState<Omit<FilterOptions, 'employee'>>({
@@ -428,6 +413,15 @@ export default function EmployeeReportsTab() {
       return
     }
 
+    if (manualHours <= 0 || manualHours > 8) {
+      toast({
+        title: "Invalid hours",
+        description: "Hours must be between 1 and 8.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSubmittingManual(true)
 
     try {
@@ -461,7 +455,7 @@ export default function EmployeeReportsTab() {
         title: "Timesheet saved",
         description:
           updatedDates.length > 0
-            ? `Updated: ${updatedDates.join(", ")}`
+            ? `Updated: ${updatedDates.map(formatToMMDDYYYY).join(", ")}`
             : "New entries created",
       })
 
@@ -675,33 +669,6 @@ export default function EmployeeReportsTab() {
                 ))}
               </div>
             )}
-
-            {dateChecked && (
-              existingEntry ? (
-                <div className="bg-yellow-900/20 border border-yellow-600/40 text-yellow-300 rounded-md p-3 text-sm">
-                  An entry already exists for this date.
-                </div>
-              ) : (
-                <div className="bg-green-900/20 border border-green-600/40 text-green-300 rounded-md p-3 text-sm">
-                  No data exists for this date. You can add a new entry.
-                </div>
-              )
-            )}
-
-            {existingEntry && (
-              <div className="bg-gray-950 border border-gray-700 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-2">Existing Entry</h4>
-
-                <div className="grid grid-cols-2 gap-3 text-sm text-gray-300">
-                  <div>Date: {existingEntry.date}</div>
-                  <div>Day: {existingEntry.day}</div>
-                  <div>Client: {existingEntry.client}</div>
-                  <div>Project: {existingEntry.project}</div>
-                  <div>Hours: {existingEntry.hours}</div>
-                  <div>Activity: {existingEntry.activity}</div>
-                </div>
-              </div>
-            )}
             {rangeStatus.length > 0 && (
               <div className="col-span-full overflow-x-auto">
                 <table className="w-full border border-gray-700 text-sm text-white">
@@ -715,7 +682,7 @@ export default function EmployeeReportsTab() {
                   <tbody>
                     {rangeStatus.map(r => (
                       <tr key={r.date} className="border-t border-gray-700">
-                        <td className="p-2">{r.date}</td>
+                        <td className="p-2">{formatToMMDDYYYY(r.date)}</td>
                         <td className="p-2">{manualHours}</td>
                         <td className={`p-2 ${r.exists ? "text-yellow-400" : "text-green-400"}`}>
                           {r.exists ? "Will be updated" : "New"}
@@ -763,21 +730,6 @@ export default function EmployeeReportsTab() {
                 ))}
               </SelectContent>
             </Select>
-
-            {dateChecked && !existingEntry && manualClient && manualProject && manualHours > 0 && (
-              <div className="bg-blue-900/20 border border-blue-600/40 rounded-lg p-4">
-                <h4 className="text-blue-300 font-medium mb-2">New Entry Preview</h4>
-
-                <div className="grid grid-cols-2 gap-3 text-sm text-blue-200">
-                  <div>Date: {manualDate}</div>
-                  <div>Hours: {manualHours}</div>
-                  <div>Client: {manualClient}</div>
-                  <div>Project: {manualProject}</div>
-                  <div>Required Hours: 8</div>
-                  <div>Activity: Manual</div>
-                </div>
-              </div>
-            )}
 
 
             <div className="col-span-full flex flex-col items-center gap-4">
