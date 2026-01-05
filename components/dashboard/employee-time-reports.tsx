@@ -39,6 +39,10 @@ export default function EmployeeReportsTab() {
   const [isSubmittingManual, setIsSubmittingManual] = useState(false)
   const [existingEntry, setExistingEntry] = useState<TimesheetEntry | null>(null)
   const [dateChecked, setDateChecked] = useState(false)
+  const [assignedProjects, setAssignedProjects] = useState<{
+    project: string
+    client: string
+  }[]>([])
 
 
   const normalizeToISO = (dateStr: string) => {
@@ -152,6 +156,7 @@ export default function EmployeeReportsTab() {
         return
       }
       setUserProfile(roleData)
+      await loadAssignedProjects(roleData.profiles.employee_id)
 
       // Load combined timesheet and PTO data
       await loadCombinedData(roleData.profiles.employee_id || user.email)
@@ -168,7 +173,6 @@ export default function EmployeeReportsTab() {
   }
 
   const loadCombinedData = async (employeeIdentifier: string) => {
-    console.log("Employee Identifier:", employeeIdentifier)
     try {
       // Fetch timesheet data (excluding PTO entries)
       const { data: timesheetData, error: timesheetError } = await supabase
@@ -243,13 +247,33 @@ export default function EmployeeReportsTab() {
     }
   }
 
-  // Get unique values for filters (exclude empty values from PTO records)
-  const clients = [...new Set(combinedData
-    .map((item) => item.client)
-    .filter(Boolean))] // This will exclude empty strings and null values
-  const projects = [...new Set(combinedData
-    .map((item) => item.project)
-    .filter(Boolean))] // This will exclude empty strings and null values
+  const loadAssignedProjects = async (employeeId: string) => {
+    const { data, error } = await supabase
+      .from("projects")
+      .select("project, client")
+      .eq("employee_id", employeeId)
+
+    if (error) {
+      console.error("Failed to load assigned projects", error)
+      toast({
+        title: "Project load error",
+        description: "Unable to load assigned projects.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setAssignedProjects(data || [])
+  }
+
+
+
+  const clients = [...new Set(assignedProjects.map(p => p.client))]
+  const projects = [...new Set(
+    assignedProjects
+      .filter(p => !manualClient || p.client === manualClient)
+      .map(p => p.project)
+  )]
 
   const handleFilterChange = (key: keyof typeof filters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
