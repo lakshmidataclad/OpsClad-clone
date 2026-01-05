@@ -575,12 +575,12 @@ export default function EmployeeReportsTab() {
       </div>
 
       <TabsContent value="manual_entry">
-        <Card className="bg-gray-900 border-gray-700 max-w-xl">
+        <Card className="bg-gray-900 border-gray-700 w-full max-w-3xl">
           <CardHeader>
             <CardTitle className="text-white">Manual Timesheet Entry</CardTitle>
           </CardHeader>
 
-          <CardContent className="space-y-4">
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               type="date"
               value={manualDate}

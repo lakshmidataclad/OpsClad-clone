@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="OpsClad-clone\public\icon.ico" />
+        <link rel="icon" href="/icon.ico" />
         <link
           href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;400;500;600&display=swap"
           rel="stylesheet"
