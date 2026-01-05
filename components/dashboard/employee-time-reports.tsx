@@ -33,6 +33,18 @@ export default function EmployeeReportsTab() {
 
   // Manual entry state
   const [manualDate, setManualDate] = useState("")
+
+  // Date range
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
+
+  // Range results
+  const [rangeStatus, setRangeStatus] = useState<{
+    date: string
+    exists: boolean
+    existing?: TimesheetEntry
+  }[]>([])
+
   const [manualHours, setManualHours] = useState<number>(0)
   const [manualClient, setManualClient] = useState("")
   const [manualProject, setManualProject] = useState("")
@@ -105,7 +117,46 @@ export default function EmployeeReportsTab() {
     setDateChecked(true)
   }
 
+  const checkEntriesForRange = async () => {
+  if (!dateFrom || !dateTo || !userProfile?.profiles?.employee_id) return
 
+  const datesISO = getDateRange(dateFrom, dateTo)
+  if (datesISO.length === 0) return
+
+  const formattedDates = datesISO.map(formatToMMDDYYYY)
+
+  const { data } = await supabase
+    .from("timesheets")
+    .select("*")
+    .eq("employee_id", userProfile.profiles.employee_id)
+    .in("date", formattedDates)
+
+  const mapped = datesISO.map(date => {
+    const match = data?.find(d => normalizeToISO(d.date) === date)
+    return {
+      date,
+      exists: !!match,
+      existing: match,
+    }
+  })
+
+  setRangeStatus(mapped)
+}
+
+
+  const getDateRange = (from: string, to: string) => {
+  if (!from || !to) return []
+
+  const start = new Date(from)
+  const end = new Date(to)
+  const dates: string[] = []
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    dates.push(d.toISOString().split("T")[0])
+  }
+
+  return dates
+}
 
   // Remove employee filter since this is employee view
   const [filters, setFilters] = useState<Omit<FilterOptions, 'employee'>>({
@@ -368,7 +419,7 @@ export default function EmployeeReportsTab() {
   }
 
   const submitManualEntry = async () => {
-    if (!manualDate || !manualClient || !manualProject) {
+    if (!dateFrom || !dateTo || !manualClient || !manualProject) {
       toast({
         title: "Missing fields",
         description: "Please complete all fields.",
@@ -377,34 +428,12 @@ export default function EmployeeReportsTab() {
       return
     }
 
-    if (manualHours <= 0 || manualHours > 8) {
-      toast({
-        title: "Invalid hours",
-        description: "Hours must be between 0 and 8.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (existingEntry) {
-      toast({
-        title: "Entry already exists",
-        description: "You already have a timesheet entry for this date.",
-        variant: "destructive",
-      })
-      return
-    }
-
     setIsSubmittingManual(true)
 
     try {
-      const day = new Date(manualDate).toLocaleDateString("en-US", {
-        weekday: "long",
-      })
-
-      const { error } = await supabase.from("timesheets").insert({
-        date: manualDate,
-        day,
+      const payload = rangeStatus.map(r => ({
+        date: formatToMMDDYYYY(r.date),
+        day: new Date(r.date).toLocaleDateString("en-US", { weekday: "long" }),
         hours: manualHours,
         required_hours: 8,
         client: manualClient,
@@ -413,34 +442,41 @@ export default function EmployeeReportsTab() {
         employee_id: userProfile.profiles.employee_id,
         employee_name: userProfile.profiles.username,
         sender_email: currentUser.email,
-      })
+        updated_at: new Date().toISOString(),
+      }))
+
+      const { error } = await supabase
+        .from("timesheets")
+        .upsert(payload, {
+          onConflict: "date,sender_email,project,client",
+        })
 
       if (error) throw error
 
+      const updatedDates = rangeStatus
+        .filter(r => r.exists)
+        .map(r => r.date)
+
       toast({
-        title: "Entry added",
-        description: "Manual timesheet entry submitted successfully.",
+        title: "Timesheet saved",
+        description:
+          updatedDates.length > 0
+            ? `Updated: ${updatedDates.join(", ")}`
+            : "New entries created",
       })
 
-      // Reset form
-      setManualDate("")
-      setManualHours(0)
-      setManualClient("")
-      setManualProject("")
-
-      // Refresh reports
       loadCombinedData(userProfile.profiles.employee_id)
-    } catch (err) {
-      console.error(err)
+    } catch (e) {
       toast({
         title: "Submission failed",
-        description: "Unable to save manual entry.",
+        description: "Unable to save entries.",
         variant: "destructive",
       })
     } finally {
       setIsSubmittingManual(false)
     }
   }
+
 
 
   const updateSummaryStats = (data: TimesheetEntry[]) => {
@@ -605,15 +641,40 @@ export default function EmployeeReportsTab() {
           </CardHeader>
 
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              type="date"
-              value={manualDate}
-              onChange={(e) => {
-                setManualDate(e.target.value)
-                checkEntryForDate(e.target.value)
-              }}
-              className="bg-black text-white"
-            />
+            <div className="col-span-full flex flex-col gap-2">
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="bg-black text-white"
+              />
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="bg-black text-white"
+              />
+            </div>
+
+            {rangeStatus.length > 0 && (
+              <div className="col-span-full bg-gray-950 border border-gray-700 rounded-md p-3 space-y-2 text-sm">
+                {rangeStatus.map(r => (
+                  <div
+                    key={r.date}
+                    className={r.exists ? "text-yellow-400" : "text-green-400"}
+                  >
+                    <strong>{r.date}</strong> —{" "}
+                    {r.exists ? (
+                      <>
+                        Existing → {r.existing?.client} / {r.existing?.project} / {r.existing?.hours}h
+                      </>
+                    ) : (
+                      "No data (new entry)"
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {dateChecked && (
               existingEntry ? (
@@ -639,6 +700,30 @@ export default function EmployeeReportsTab() {
                   <div>Hours: {existingEntry.hours}</div>
                   <div>Activity: {existingEntry.activity}</div>
                 </div>
+              </div>
+            )}
+            {rangeStatus.length > 0 && (
+              <div className="col-span-full overflow-x-auto">
+                <table className="w-full border border-gray-700 text-sm text-white">
+                  <thead className="bg-gray-900">
+                    <tr>
+                      <th className="p-2">Date</th>
+                      <th className="p-2">Hours</th>
+                      <th className="p-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rangeStatus.map(r => (
+                      <tr key={r.date} className="border-t border-gray-700">
+                        <td className="p-2">{r.date}</td>
+                        <td className="p-2">{manualHours}</td>
+                        <td className={`p-2 ${r.exists ? "text-yellow-400" : "text-green-400"}`}>
+                          {r.exists ? "Will be updated" : "New"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
 
@@ -695,13 +780,28 @@ export default function EmployeeReportsTab() {
             )}
 
 
-            <Button
-              onClick={submitManualEntry}
-              disabled={isSubmittingManual}
-              className="bg-orange-600 hover:bg-orange-700"
-            >
-              {isSubmittingManual ? "Submitting..." : "Submit Entry"}
-            </Button>
+            <div className="col-span-full flex flex-col items-center gap-4">
+              <Button
+                onClick={submitManualEntry}
+                disabled={isSubmittingManual}
+                className="bg-orange-600 hover:bg-orange-700 px-12"
+              >
+                {isSubmittingManual ? "Submitting..." : "Submit Entry"}
+              </Button>
+            {rangeStatus.length > 0 && (
+              <div className="bg-blue-900/20 border border-blue-600/40 rounded-lg p-4 w-full">
+                <h4 className="text-blue-300 font-medium mb-2">
+                  New Entry Preview
+                </h4>
+
+                {rangeStatus.map(r => (
+                  <div key={r.date} className="text-blue-200 text-sm">
+                    {r.date} → {manualHours}h ({r.exists ? "Update" : "New"})
+                  </div>
+                ))}
+              </div>
+            )}
+            </div>
           </CardContent>
         </Card>
       </TabsContent>
