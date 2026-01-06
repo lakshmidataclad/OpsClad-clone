@@ -742,14 +742,8 @@ const sendSocialMessage = async () => {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("employee_id")
+    .select("employee_id, username")
     .eq("id", user.id)
-    .single()
-
-  const { data: employee } = await supabase
-    .from("employees")
-    .select("name")
-    .eq("employee_id", profile?.employee_id)
     .single()
 
   const { data: roleRow } = await supabase
@@ -758,10 +752,24 @@ const sendSocialMessage = async () => {
     .eq("user_id", user.id)
     .single()
 
+  let displayName = profile?.username || "DATACLAD"
+
+  if (roleRow?.role === "employee" && profile?.employee_id) {
+    const { data: employee } = await supabase
+      .from("employees")
+      .select("name")
+      .eq("employee_id", profile.employee_id)
+      .single()
+
+    if (employee?.name) {
+      displayName = employee.name
+    }
+  }
+
   await supabase.from("social_messages").insert({
     user_id: user.id,
-    user_name: employee?.name || "DATACLAD",
-    user_role: roleRow?.role || "Employee",
+    user_name: displayName,
+    user_role: roleRow?.role || "employee",
     message: socialInput.trim(),
   })
 
