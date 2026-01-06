@@ -629,106 +629,109 @@ useEffect(() => {
       </div>
 
       <TabsContent value="manual_entry">
-        <Card className="bg-gray-900 border-gray-700 w-full max-w-3xl">
+        <Card className="bg-gray-900 border-gray-700 w-full max-w-screen-xl mx-auto">
           <CardHeader>
             <CardTitle className="text-white">Manual Timesheet Entry</CardTitle>
           </CardHeader>
 
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="col-span-full grid grid-cols-2 gap-4">
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="bg-black text-white"
-              />
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="bg-black text-white"
-              />
+            <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-gray-300 text-sm">From Date</Label>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="bg-black text-white"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-gray-300 text-sm">To Date</Label>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="bg-black text-white"
+                />
+              </div>
             </div>
 
             {rangeStatus.length > 0 && (
-              <div className="col-span-full overflow-x-auto">
-                <table className="w-full border border-gray-700 text-sm text-white">
-                  <thead className="bg-gray-900">
-                    <tr>
-                      <th className="p-2">Date</th>
-                      <th className="p-2">Hours</th>
-                      <th className="p-2">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rangeStatus.map(r => (
-                      <tr key={r.date} className="border-t border-gray-700">
-                        <td className="p-2">{formatToMMDDYYYY(r.date)}</td>
-                        <td className="p-2">{manualHours}</td>
-                        <td className={`p-2 ${r.exists ? "text-yellow-400" : "text-green-400"}`}>
-                          {r.exists ? "Will be updated" : "New"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="col-span-full bg-gray-950 border border-gray-700 rounded-md p-3 text-sm max-h-[200px] overflow-y-auto space-y-2">
+                {rangeStatus.map(r => (
+                  <div
+                    key={r.date}
+                    className={r.exists ? "text-yellow-400" : "text-green-400"}
+                  >
+                    <strong>{r.date}</strong> —{" "}
+                    {r.exists ? (
+                      <>
+                        Existing → {r.existing?.client} / {r.existing?.project} / {r.existing?.hours}h
+                      </>
+                    ) : (
+                      "No data (new entry)"
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 
             <div className="col-span-full grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Hours */}
-              <Input
-                type="number"
-                min={0}
-                max={8}
-                step={0.25}
-                placeholder="Hours"
-                value={manualHours}
-                onChange={(e) => handleManualHoursChange(Number(e.target.value))}
-                className="bg-black text-white md:col-span-1"
-              />
+              <div className="space-y-1">
+                <Label className="text-gray-300 text-sm">Hours</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={8}
+                  step={0.25}
+                  placeholder="0 – 8"
+                  value={manualHours}
+                  onChange={(e) => handleManualHoursChange(Number(e.target.value))}
+                  className="bg-black text-white"
+                />
+              </div>
 
               {/* Client */}
-              <Select value={manualClient} onValueChange={setManualClient}>
-                <SelectTrigger className="bg-black text-white md:col-span-1">
-                  <SelectValue placeholder="Client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((client) => (
-                    <SelectItem key={client} value={client}>
-                      {client}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-1">
+                <Label className="text-gray-300 text-sm">Client</Label>
+                <Select value={manualClient} onValueChange={setManualClient}>
+                  <SelectTrigger className="bg-black text-white">
+                    <SelectValue placeholder="Select client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((client) => (
+                      <SelectItem key={client} value={client}>
+                        {client}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {/* Project */}
-              <Select value={manualProject} onValueChange={setManualProject}>
-                <SelectTrigger className="bg-black text-white md:col-span-2">
-                  <SelectValue placeholder="Project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project} value={project}>
-                      {project}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-1 md:col-span-2">
+                <Label className="text-gray-300 text-sm">Project</Label>
+                <Select value={manualProject} onValueChange={setManualProject}>
+                  <SelectTrigger className="bg-black text-white">
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((project) => (
+                      <SelectItem key={project} value={project}>
+                        {project}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
 
-
             <div className="col-span-full flex flex-col items-center gap-4">
-              <Button
-                onClick={submitManualEntry}
-                disabled={isSubmittingManual}
-                className="bg-orange-600 hover:bg-orange-700 px-12"
-              >
-                {isSubmittingManual ? "Submitting..." : "Submit Entry"}
-              </Button>
               {rangeStatus.length > 0 && (
-                <div className="col-span-full bg-blue-900/20 border border-blue-600/40 rounded-lg p-4 w-full">
+                <div className="col-span-full bg-blue-900/20 border border-blue-600/40 rounded-lg p-4 w-full max-h-[180px] overflow-y-auto">
                   <h4 className="text-blue-300 font-medium mb-2">
                     New Entry Preview
                   </h4>
@@ -753,6 +756,13 @@ useEffect(() => {
                 </div>
               )}
 
+              <Button
+                onClick={submitManualEntry}
+                disabled={isSubmittingManual}
+                className="bg-orange-600 hover:bg-orange-700 px-12"
+              >
+                {isSubmittingManual ? "Submitting..." : "Submit Entry"}
+              </Button>
             </div>
           </CardContent>
         </Card>
