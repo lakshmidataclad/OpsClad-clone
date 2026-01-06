@@ -635,7 +635,7 @@ useEffect(() => {
           </CardHeader>
 
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="col-span-full flex flex-col gap-2">
+            <div className="col-span-full grid grid-cols-2 gap-4">
               <Input
                 type="date"
                 value={dateFrom}
@@ -650,25 +650,6 @@ useEffect(() => {
               />
             </div>
 
-            {rangeStatus.length > 0 && (
-              <div className="col-span-full bg-gray-950 border border-gray-700 rounded-md p-3 space-y-2 text-sm">
-                {rangeStatus.map(r => (
-                  <div
-                    key={r.date}
-                    className={r.exists ? "text-yellow-400" : "text-green-400"}
-                  >
-                    <strong>{r.date}</strong> —{" "}
-                    {r.exists ? (
-                      <>
-                        Existing → {r.existing?.client} / {r.existing?.project} / {r.existing?.hours}h
-                      </>
-                    ) : (
-                      "No data (new entry)"
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
             {rangeStatus.length > 0 && (
               <div className="col-span-full overflow-x-auto">
                 <table className="w-full border border-gray-700 text-sm text-white">
@@ -694,42 +675,48 @@ useEffect(() => {
               </div>
             )}
 
-            <Input
-              type="number"
-              min={0}
-              max={8}
-              step={0.25}
-              placeholder="Hours worked (max 8)"
-              value={manualHours}
-              onChange={(e) => handleManualHoursChange(Number(e.target.value))}
-              className="bg-black text-white"
-            />
+            <div className="col-span-full grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Hours */}
+              <Input
+                type="number"
+                min={0}
+                max={8}
+                step={0.25}
+                placeholder="Hours"
+                value={manualHours}
+                onChange={(e) => handleManualHoursChange(Number(e.target.value))}
+                className="bg-black text-white md:col-span-1"
+              />
 
-            <Select value={manualClient} onValueChange={setManualClient}>
-              <SelectTrigger className="bg-black text-white">
-                <SelectValue placeholder="Select Client" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((client) => (
-                  <SelectItem key={client} value={client}>
-                    {client}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {/* Client */}
+              <Select value={manualClient} onValueChange={setManualClient}>
+                <SelectTrigger className="bg-black text-white md:col-span-1">
+                  <SelectValue placeholder="Client" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((client) => (
+                    <SelectItem key={client} value={client}>
+                      {client}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Select value={manualProject} onValueChange={setManualProject}>
-              <SelectTrigger className="bg-black text-white">
-                <SelectValue placeholder="Select Project" />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map((project) => (
-                  <SelectItem key={project} value={project}>
-                    {project}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {/* Project */}
+              <Select value={manualProject} onValueChange={setManualProject}>
+                <SelectTrigger className="bg-black text-white md:col-span-2">
+                  <SelectValue placeholder="Project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project} value={project}>
+                      {project}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
 
 
             <div className="col-span-full flex flex-col items-center gap-4">
@@ -740,19 +727,32 @@ useEffect(() => {
               >
                 {isSubmittingManual ? "Submitting..." : "Submit Entry"}
               </Button>
-            {rangeStatus.length > 0 && (
-              <div className="bg-blue-900/20 border border-blue-600/40 rounded-lg p-4 w-full">
-                <h4 className="text-blue-300 font-medium mb-2">
-                  New Entry Preview
-                </h4>
+              {rangeStatus.length > 0 && (
+                <div className="col-span-full bg-blue-900/20 border border-blue-600/40 rounded-lg p-4 w-full">
+                  <h4 className="text-blue-300 font-medium mb-2">
+                    New Entry Preview
+                  </h4>
 
-                {rangeStatus.map(r => (
-                  <div key={r.date} className="text-blue-200 text-sm">
-                    {r.date} → {manualHours}h ({r.exists ? "Update" : "New"})
-                  </div>
-                ))}
-              </div>
-            )}
+                  {rangeStatus.map(r => (
+                    <div
+                      key={r.date}
+                      className="text-blue-200 text-sm flex flex-wrap gap-2"
+                    >
+                      <span className="font-mono">{r.date}</span>
+                      <span>→</span>
+                      <span>{manualHours}h</span>
+                      <span className={r.exists ? "text-yellow-400" : "text-green-400"}>
+                        ({r.exists ? "Update" : "New"})
+                      </span>
+                      <span>•</span>
+                      <span>{manualClient}</span>
+                      <span>/</span>
+                      <span>{manualProject}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
             </div>
           </CardContent>
         </Card>
