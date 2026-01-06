@@ -494,22 +494,41 @@ const deleteAnnouncement = async (id: string) => {
 }
   
 
-const getMessageBg = (index: number, messages: SocialMessage[]) => {
-  if (index === 0) return "bg-gray-800 border-gray-700"
 
-  const prev = messages[index - 1]
-  const curr = messages[index]
 
-  // Same sender → keep previous colour
-if (prev.user_id === curr.user_id) {
-  return index > 1 ? getMessageBg(index - 1, messages) : "bg-gray-800 border-gray-700"
-}
 
-  // New sender → alternate
-  return index % 2 === 0
-    ? "bg-red-900/30 border-red-800"
-    : "bg-gray-800 border-gray-700"
-}
+
+  const MESSAGE_COLORS = [
+    "bg-blue-900/30 border-blue-800",
+    "bg-green-900/30 border-green-800",
+    "bg-purple-900/30 border-purple-800",
+    "bg-pink-900/30 border-pink-800",
+    "bg-yellow-900/30 border-yellow-800",
+    "bg-indigo-900/30 border-indigo-800",
+    "bg-teal-900/30 border-teal-800",
+    "bg-orange-900/30 border-orange-800",
+  ]
+
+  const hashStringToIndex = (str: string, modulo: number) => {
+    let hash = 0
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i)
+      hash |= 0 // force 32-bit
+    }
+    return Math.abs(hash) % modulo
+  }
+
+  const getUserMessageColor = (userId: string) => {
+    const index = hashStringToIndex(userId, MESSAGE_COLORS.length)
+    return MESSAGE_COLORS[index]
+  }
+
+
+
+
+
+
+
 
   const changeMonth = (direction: "prev" | "next") => {
     setSelectedMonth(prev => {
@@ -1184,40 +1203,32 @@ const visibleAnnouncements = announcements
                       )}
 
                       {/* 💬 Message */}
-                      <div className={`${isSameSender ? "ml-6 mt-1" : "mt-3"}`}>
-                        {/* 👤 Sender Header (only once per group) */}
+                      <div className="flex flex-col items-start">
                         {!isSameSender && (
-                          <div className="flex items-center gap-2 mb-0.5 text-xs">
-                            <span className="font-semibold text-white">
-                              {msg.user_name}
-                            </span>
-
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px]
-                                ${
-                                  msg.user_role === "manager"
-                                    ? "bg-orange-600/20 text-orange-400 border border-orange-500"
-                                    : "bg-blue-600/20 text-blue-400 border border-blue-500"
-                                }
-                              `}
-                            >
+                          <div className="flex items-center gap-2 text-xs text-white">
+                            <span className="font-semibold">{msg.user_name}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-orange-600/20 text-orange-400 border border-orange-500">
                               {msg.user_role}
                             </span>
                           </div>
                         )}
 
-                        {/* 🧱 Message Bubble */}
                         <div
-                          className={`p-3 ${isSameSender ? "rounded-lg rounded-tl-sm" : "rounded-lg"} 
-                          border max-w-[70%] sm:max-w-[75%] w-fit flex flex-col gap-1
-                          ${getMessageBg(index, socialMessages)}
+                          className={`
+                            p-3
+                            border
+                            max-w-[70%]
+                            w-fit
+                            flex flex-col gap-1
+                            ${isSameSender ? "rounded-lg rounded-tl-sm" : "rounded-lg"}
+                            ${getUserMessageColor(msg.user_id)}
                           `}
                         >
                           <p className="text-gray-200 text-sm whitespace-pre-wrap break-all">
                             {msg.message}
                           </p>
 
-                          <span className="text-[10px] text-gray-500 self-end whitespace-nowrap">
+                          <span className="text-[10px] text-gray-500 self-end">
                             {new Date(msg.created_at).toLocaleTimeString([], {
                               hour: "2-digit",
                               minute: "2-digit",
@@ -1225,6 +1236,7 @@ const visibleAnnouncements = announcements
                           </span>
                         </div>
                       </div>
+
                     </div>
                   )
                 })

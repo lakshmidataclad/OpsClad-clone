@@ -670,7 +670,7 @@ useEffect(() => {
                         Existing → {r.existing?.client} / {r.existing?.project} / {r.existing?.hours}h
                       </>
                     ) : (
-                      "No data (new entry)"
+                      "No Entry)"
                     )}
                   </div>
                 ))}
