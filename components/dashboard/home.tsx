@@ -839,7 +839,6 @@ const visibleAnnouncements = announcements
 
 
   const handleWelcomeComplete = () => {
-    setShowWelcome(false)
     // Small delay before showing content for smooth transition
     setTimeout(() => {
       setShowContent(true)
