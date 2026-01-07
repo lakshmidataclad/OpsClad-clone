@@ -9,8 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Calendar, Plus, BarChart3, Loader2, Clock, CheckCircle, XCircle, ArrowRight } from "lucide-react"
+import { Plus, BarChart3, Loader2, Clock, CheckCircle, XCircle } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { format, parseISO, startOfYear, endOfYear, isFuture, isToday } from "date-fns"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
@@ -40,10 +39,6 @@ interface PTORequest {
   reason: string
 }
 
-interface CarryForwardRequest {
-  days_to_carry: number
-}
-
 interface Employee {
   employee_id: string
   name: string
@@ -59,8 +54,6 @@ interface EmployeePTOSummary {
   remaining_pto_days: number
   non_pto_hours: number
   non_pto_days: number
-  carry_forward_days: number
-  effective_pto_limit: number
 }
 
 /* ---------------- MAIN ---------------- */
@@ -82,19 +75,12 @@ export default function EmployeePTOTrackingTab() {
     reason: "",
   })
 
-  const [isCarryForwardOpen, setIsCarryForwardOpen] = useState(false)
-  const [carryForwardRequest, setCarryForwardRequest] = useState<CarryForwardRequest>({
-    days_to_carry: 0,
-  })
-  const [submittingCarryForward, setSubmittingCarryForward] = useState(false)
-
   const [submittingPTORequest, setSubmittingPTORequest] = useState(false)
 
   const { toast } = useToast()
 
   const BASE_PTO_LIMIT_DAYS = 12
   const currentYear = selectedYear
-  const nextYear = currentYear + 1
 
   const yearStart = startOfYear(new Date(selectedYear, 0, 1))
   const yearEnd = endOfYear(new Date(selectedYear, 11, 31))
@@ -202,8 +188,6 @@ export default function EmployeePTOTrackingTab() {
       remaining_pto_days: remaining,
       non_pto_hours: nonPtoHours,
       non_pto_days: nonPtoDays,
-      carry_forward_days: 0,
-      effective_pto_limit: BASE_PTO_LIMIT_DAYS,
     }
   }
 
@@ -327,17 +311,6 @@ const submitPTORequest = async () => {
   }
 }
 
-
-
-  const submitCarryForwardRequest = async () => {
-    setSubmittingCarryForward(true)
-    setTimeout(() => {
-      toast({ title: "Carry Forward Submitted" })
-      setSubmittingCarryForward(false)
-      setIsCarryForwardOpen(false)
-    }, 800)
-  }
-
   /* ---------------- RENDER ---------------- */
 
   if (!currentEmployee) {
@@ -359,7 +332,7 @@ const submitPTORequest = async () => {
         <div>
           <CardTitle>My Leave Tracking</CardTitle>
           <p className="text-sm text-gray-500 mt-1">
-            Calendar Year {currentYear} • Your PTO limit: {summary?.effective_pto_limit || BASE_PTO_LIMIT_DAYS} days
+            Calendar Year {currentYear} • Your PTO limit: {BASE_PTO_LIMIT_DAYS} days
             {summary && summary.carry_forward_days > 0 && (
               <span className="ml-2 text-green-600">
                 (includes {summary.carry_forward_days} carried forward days)
@@ -387,16 +360,6 @@ const submitPTORequest = async () => {
             <Plus className="w-4 h-4 mr-2" />
             Request Leave
           </Button>
-          {selectedYear === new Date().getFullYear() && summary && summary.remaining_pto_days > 0 && (
-            <Button
-              onClick={() => setIsCarryForwardOpen(true)}
-              variant="outline"
-              className="border-gray-600 text-gray-300 hover:bg-gray-700"
-            >
-              <ArrowRight className="w-4 h-4 mr-2" />
-              Carry Forward
-            </Button>
-          )}
         </div>
       </div>
 
@@ -535,9 +498,6 @@ const submitPTORequest = async () => {
                           <TableHead className="text-black">PTO Used</TableHead>
                           <TableHead className="text-black">PTO Remaining</TableHead>
                           <TableHead className="text-black">Non-PTO</TableHead>
-                          {summary.carry_forward_days > 0 && (
-                            <TableHead className="text-black">Carried Forward</TableHead>
-                          )}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -563,13 +523,6 @@ const submitPTORequest = async () => {
                                   {(summary.non_pto_days || 0).toFixed(1)} days
                               </Badge>
                           </TableCell>
-                          {summary.carry_forward_days > 0 && (
-                            <TableCell className="text-black">
-                              <Badge variant="outline" className="border-purple-500 text-purple-600">
-                                {summary.carry_forward_days.toFixed(1)} days
-                              </Badge>
-                            </TableCell>
-                          )}
                         </TableRow>
                       </TableBody>
                     </Table>
@@ -598,9 +551,6 @@ const submitPTORequest = async () => {
                       <Bar dataKey="ptoUsed" stackId="a" fill="#10b981" name="PTO Used" />
                       <Bar dataKey="remaining" stackId="a" fill="#6b7280" name="PTO Remaining" />
                       <Bar dataKey="nonPto" fill="#f59e0b" name="Non-PTO" />
-                      {summary && summary.carry_forward_days > 0 && (
-                        <Bar dataKey="carryForward" fill="#8b5cf6" name="Carried Forward" />
-                      )}
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -690,64 +640,6 @@ const submitPTORequest = async () => {
                 <Plus className="w-4 h-4 mr-2" />
               )}
               {submittingPTORequest ? "Submitting..." : "Submit Request"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Carry Forward Dialog */}
-      <Dialog open={isCarryForwardOpen} onOpenChange={setIsCarryForwardOpen}>
-        <DialogContent className="bg-gray-950 border-gray-700 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-white">Request PTO Carry Forward</DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Request to carry forward unused PTO days to {nextYear}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {summary && (
-              <Alert className="bg-blue-50 border-blue-200">
-                <Calendar className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800">
-                  You have <strong>{summary.remaining_pto_days.toFixed(1)} days</strong> remaining that can be carried forward.
-                </AlertDescription>
-              </Alert>
-            )}
-            <div>
-              <Label htmlFor="carry-days" className="text-white">Days to Carry Forward</Label>
-              <Input
-                id="carry-days"
-                type="number"
-                min="1"
-                max={summary?.remaining_pto_days || 0}
-                step="0.5"
-                value={carryForwardRequest.days_to_carry}
-                onChange={(e) => setCarryForwardRequest(prev => ({
-                  ...prev,
-                  days_to_carry: parseFloat(e.target.value) || 0
-                }))}
-                className="bg-gray-800 border-gray-600 text-white"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Maximum: {summary?.remaining_pto_days.toFixed(1)} days available to carry forward
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCarryForwardOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={submitCarryForwardRequest}
-              disabled={submittingCarryForward || !carryForwardRequest.days_to_carry}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {submittingCarryForward ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <ArrowRight className="w-4 h-4 mr-2" />
-              )}
-              {submittingCarryForward ? "Submitting..." : "Submit Request"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -41,6 +41,8 @@ export default function EmployeeReportsTab() {
     date: string
     exists: boolean
     existing?: TimesheetEntry
+    blocked: boolean
+    blockedReason?: "PTO" | "HOLIDAY"
   }[]>([])
 
   const [manualHours, setManualHours] = useState<number>(0)
@@ -92,32 +94,74 @@ export default function EmployeeReportsTab() {
   }
 
   const checkEntriesForRange = async () => {
-  if (!dateFrom || !dateTo || !userProfile?.profiles?.employee_id) return
+    if (!dateFrom || !dateTo || !userProfile?.profiles?.employee_id) return
 
-  const datesISO = getDateRange(dateFrom, dateTo)
-  if (datesISO.length === 0) return
+    const datesISO = getDateRange(dateFrom, dateTo)
+    if (datesISO.length === 0) return
 
-  const formattedDates = datesISO.map(formatToMMDDYYYY)
+    const formattedDates = datesISO.map(formatToMMDDYYYY)
 
-  const { data } = await supabase
-    .from("timesheets")
-    .select("*")
-    .eq("employee_id", userProfile.profiles.employee_id)
-    .in("date", formattedDates)
+    /* Timesheets */
+    const { data: timesheets } = await supabase
+      .from("timesheets")
+      .select("*")
+      .eq("employee_id", userProfile.profiles.employee_id)
+      .in("date", formattedDates)
 
-  const map = new Map(data?.map(d => [normalizeToISO(d.date), d]))
+    const timesheetMap = new Map(
+      timesheets?.map(d => [normalizeToISO(d.date), d])
+    )
 
-  const mapped = datesISO.map(date => {
-    const match = map.get(date)
+    /* PTO (approved only) */
+    const { data: ptoData } = await supabase
+      .from("pto_records")
+      .select("date")
+      .eq("employee_id", userProfile.profiles.employee_id)
+      .eq("status", "approved")
+      .in("date", datesISO.map(d => d))
+
+    const ptoSet = new Set(ptoData?.map(p => p.date))
+
+    /* Holidays */
+    const { data: holidays } = await supabase
+      .from("holidays")
+      .select("holiday_date")
+      .in("holiday_date", datesISO)
+
+    const holidaySet = new Set(holidays?.map(h => h.holiday_date))
+
+    const mapped = datesISO.map(date => {
+      if (ptoSet.has(date)) {
+        return {
+          date,
+          exists: false,
+          blocked: true,
+          blockedReason: "PTO",
+        }
+      }
+
+      if (holidaySet.has(date)) {
+        return {
+          date,
+          exists: false,
+          blocked: true,
+          blockedReason: "HOLIDAY",
+        }
+      }
+
+      const match = timesheetMap.get(date)
+
       return {
         date,
         exists: !!match,
         existing: match,
+        blocked: false,
       }
-  })
+    })
 
-  setRangeStatus(mapped)
-}
+    setRangeStatus(mapped)
+  }
+
 
 
   const getDateRange = (from: string, to: string) => {
@@ -425,19 +469,42 @@ useEffect(() => {
     setIsSubmittingManual(true)
 
     try {
-      const payload = rangeStatus.map(r => ({
-        date: formatToMMDDYYYY(r.date),
-        day: new Date(r.date).toLocaleDateString("en-US", { weekday: "long" }),
-        hours: manualHours,
-        required_hours: 8,
-        client: manualClient,
-        project: manualProject,
-        activity: "manual",
-        employee_id: userProfile.profiles.employee_id,
-        employee_name: userProfile.profiles.username,
-        sender_email: currentUser.email,
-        updated_at: new Date().toISOString(),
-      }))
+      const payload = rangeStatus
+        .filter(r => !r.blocked)
+        .map(r => ({
+          date: formatToMMDDYYYY(r.date),
+          day: new Date(r.date).toLocaleDateString("en-US", { weekday: "long" }),
+          hours: manualHours,
+          required_hours: 8,
+          client: manualClient,
+          project: manualProject,
+          activity: "manual",
+          employee_id: userProfile.profiles.employee_id,
+          employee_name: userProfile.profiles.username,
+          sender_email: currentUser.email,
+          updated_at: new Date().toISOString(),
+        }))
+
+      const blockedDates = rangeStatus.filter(r => r.blocked)
+      if (blockedDates.length > 0) {
+        toast({
+          title: "Some dates skipped",
+          description: blockedDates
+            .map(d => `${d.date} (${d.blockedReason})`)
+            .join(", "),
+          variant: "destructive",
+        })
+      }
+
+      if (payload.length === 0) {
+        toast({
+          title: "No valid dates",
+          description: "All selected dates are PTO or holidays.",
+          variant: "destructive",
+        })
+        setIsSubmittingManual(false)
+        return
+      }
 
       const { error } = await supabase
         .from("timesheets")
@@ -448,7 +515,7 @@ useEffect(() => {
       if (error) throw error
 
       const updatedDates = rangeStatus
-        .filter(r => r.exists)
+        .filter(r => r.exists && !r.blocked)
         .map(r => r.date)
 
       toast({
@@ -662,16 +729,26 @@ useEffect(() => {
                 {rangeStatus.map(r => (
                   <div
                     key={r.date}
-                    className={r.exists ? "text-yellow-400" : "text-green-400"}
+                    className={
+                      r.blocked
+                        ? "text-red-500"
+                        : r.exists
+                        ? "text-yellow-400"
+                        : "text-green-400"
+                    }                  
                   >
                     <strong>{r.date}</strong> —{" "}
-                    {r.exists ? (
-                      <>
-                        Existing → {r.existing?.client} / {r.existing?.project} / {r.existing?.hours}h
-                      </>
-                    ) : (
-                      "No Entry)"
-                    )}
+                  {r.blocked ? (
+                    <span className="text-red-500 font-semibold">
+                      {r.blockedReason} — Manual entry disabled
+                    </span>
+                  ) : r.exists ? (
+                    <>
+                      Existing → {r.existing?.client} / {r.existing?.project} / {r.existing?.hours}h
+                    </>
+                  ) : (
+                    "No Entry"
+                  )}
                   </div>
                 ))}
               </div>
@@ -744,9 +821,15 @@ useEffect(() => {
                       <span className="font-mono">{r.date}</span>
                       <span>→</span>
                       <span>{manualHours}h</span>
-                      <span className={r.exists ? "text-yellow-400" : "text-green-400"}>
-                        ({r.exists ? "Update" : "New"})
-                      </span>
+                      {r.blocked ? (
+                        <span className="text-red-500 font-semibold">
+                          ({r.blockedReason})
+                        </span>
+                      ) : (
+                        <span className={r.exists ? "text-yellow-400" : "text-green-400"}>
+                          ({r.exists ? "Update" : "New"})
+                        </span>
+                      )}
                       <span>•</span>
                       <span>{manualClient}</span>
                       <span>/</span>
