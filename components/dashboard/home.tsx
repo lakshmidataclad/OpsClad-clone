@@ -403,7 +403,7 @@ export default function HomePage() {
   const [holidays, setHolidays] = useState<HolidayRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [showWelcome, setShowWelcome] = useState(true)
+  const [showWelcome, setShowWelcome] = useState(false)
   const [showContent, setShowContent] = useState(false)
   const [selectedDate, setSelectedDate] = useState<SelectedDateInfo | null>(null)
   const [userRole, setUserRole] = useState<"manager" | "employee" | null>(null)
@@ -838,11 +838,22 @@ const visibleAnnouncements = announcements
 
 
 
-  const handleWelcomeComplete = () => {
-    // Small delay before showing content for smooth transition
-    setTimeout(() => {
-      setShowContent(true)
-    }, 300)
+  const handleWelcomeComplete = async () => {
+  const { data: auth } = await supabase.auth.getUser()
+    if (auth?.user) {
+      setShowWelcome(false)
+      // Small delay before showing content for smooth transition
+      setTimeout(() => {
+        setShowContent(true)
+      }, 300)
+    }
+    
+    else{
+      // Not logged in, skip welcome
+      setShowWelcome(false)
+      setShowContent(false)
+    }
+
   }
 
   const getBirthdaysForDate = (date: Date): Employee[] => {
