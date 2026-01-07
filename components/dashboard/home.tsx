@@ -189,7 +189,11 @@ const rangeIntersectsMonth = (
 const TypingWelcome = ({ employeeName, onComplete }: { employeeName: string, onComplete: () => void }) => {
   const [displayedText, setDisplayedText] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
-  const fullText = `Welcome to OpsClad!`
+  const [fullText] = useState(() =>
+    employeeName
+      ? `Welcome to OpsClad, ${employeeName}!`
+      : `Welcome to OpsClad!`
+  )
   
   useEffect(() => {
     if (currentIndex < fullText.length) {
@@ -404,6 +408,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showWelcome, setShowWelcome] = useState(false)
+  const [employeeName, setEmployeeName] = useState("")
   const [showContent, setShowContent] = useState(false)
   const [selectedDate, setSelectedDate] = useState<SelectedDateInfo | null>(null)
   const [userRole, setUserRole] = useState<"manager" | "employee" | null>(null)
@@ -619,28 +624,55 @@ const deleteAnnouncement = async (id: string) => {
       const {
         data: { user },
       } = await supabase.auth.getUser()
-
+      
       if (user) {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .single()
+        const welcomeKey = `opsclad_welcome_shown_${user.id}`
+        const alreadyShown = localStorage.getItem(welcomeKey)
 
-      if (error) {
-        console.error("ROLE LOAD FAILED:", error)
-        // null = role could not be determined (safe default)
-        setUserRole("employee")
-        return
+        // 🔹 Load employee name for welcome screen
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("employee_id, username")
+          .eq("id", user.id)
+          .single()
+
+        if (profile?.employee_id) {
+          const { data: employee } = await supabase
+            .from("employees")
+            .select("name")
+            .eq("employee_id", profile.employee_id)
+            .single()
+
+          if (employee?.name) {
+            setEmployeeName(employee.name)
+          }
+        } else if (profile?.username) {
+          // fallback for managers / non-employees
+          setEmployeeName(profile.username)
+        }
+
+
+        if (!alreadyShown) {
+          setShowWelcome(true)
+        } else {
+          setShowContent(true)
+        }
+
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single()
+
+        if (error) {
+          console.error("ROLE LOAD FAILED:", error)
+          setUserRole("employee")
+          return
+        }
+
+        setUserRole(data?.role === "manager" ? "manager" : "employee")
       }
 
-      const role = data?.role?.toLowerCase()
-
-      if (role === "manager") {
-        setUserRole("manager")
-      } else {
-        setUserRole("employee")
-      }}
 
     } catch (err) {
       console.error("Init error:", err)
@@ -839,22 +871,21 @@ const visibleAnnouncements = announcements
 
 
   const handleWelcomeComplete = async () => {
-  const { data: auth } = await supabase.auth.getUser()
-    if (auth?.user) {
-      setShowWelcome(false)
-      // Small delay before showing content for smooth transition
-      setTimeout(() => {
-        setShowContent(true)
-      }, 300)
-    }
-    
-    else{
-      // Not logged in, skip welcome
-      setShowWelcome(false)
-      setShowContent(false)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (user) {
+      localStorage.setItem(`opsclad_welcome_shown_${user.id}`, "true")
     }
 
+    setShowWelcome(false)
+
+    setTimeout(() => {
+      setShowContent(true)
+    }, 300)
   }
+
 
   const getBirthdaysForDate = (date: Date): Employee[] => {
     return employees.filter(employee => {
@@ -1000,7 +1031,7 @@ const visibleAnnouncements = announcements
 
   // Show welcome screen first
   if (showWelcome) {
-    return <TypingWelcome employeeName='' onComplete={handleWelcomeComplete} />
+    return <TypingWelcome employeeName={employeeName} onComplete={handleWelcomeComplete} />
   }
 
   // Show calendar content after welcome
