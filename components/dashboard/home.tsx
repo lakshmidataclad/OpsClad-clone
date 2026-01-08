@@ -207,7 +207,7 @@ const TypingWelcome = ({ employeeName, onComplete }: { employeeName: string, onC
       // Wait 2 seconds after typing is complete, then fade out
       const fadeTimeout = setTimeout(() => {
         onComplete()
-      }, 2000)
+      }, 600)
       
       return () => clearTimeout(fadeTimeout)
     }
@@ -230,6 +230,7 @@ const DateDetailsModal = ({ selectedDate, onClose }: { selectedDate: SelectedDat
   if (!selectedDate) return null
 
   return (
+    
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-2xl max-h-[80vh] overflow-y-auto bg-gray-900 border-gray-700">
         <CardHeader className="flex flex-row items-center justify-between">
@@ -881,9 +882,8 @@ const visibleAnnouncements = announcements
 
     setShowWelcome(false)
 
-    setTimeout(() => {
-      setShowContent(true)
-    }, 300)
+    setShowContent(true)
+
   }
 
 
@@ -1043,6 +1043,14 @@ const visibleAnnouncements = announcements
     
 
  <div className="p-6 bg-gray-800 min-h-screen">
+    <div
+      className={`
+        transition-all duration-700 ease-out
+        ${showContent
+          ? "opacity-100 translate-y-0"
+          : "opacity-0 translate-y-4"}
+      `}
+    >
     <Tabs defaultValue="overview">
 
       {/* TAB HEADER WITH ACTION BUTTON */}
@@ -1588,7 +1596,7 @@ const visibleAnnouncements = announcements
         </DialogFooter>
       </DialogContent>
     </Dialog>
-
+  </div>
   </div>
 )
 }
