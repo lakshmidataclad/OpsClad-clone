@@ -1065,7 +1065,7 @@ const visibleAnnouncements = announcements
   return (
     
 
- <div className="p-6 bg-gray-800 min-h-screen">
+  <div className="p-6 space-y-6 bg-gray-800 min-h-screen animate-in fade-in duration-500">
     <div
       className={`
         transition-all duration-700 ease-out
