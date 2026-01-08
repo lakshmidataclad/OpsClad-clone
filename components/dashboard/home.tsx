@@ -435,6 +435,19 @@ export default function HomePage() {
 
   const { toast } = useToast()
 
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        setShowWelcome(false)
+        setShowContent(false)
+      }
+    })
+
+    return () => {
+        sub.subscription.unsubscribe()
+      }
+    }, [])
+
 
   const [announcement, setAnnouncement] = useState({
     title: "",
