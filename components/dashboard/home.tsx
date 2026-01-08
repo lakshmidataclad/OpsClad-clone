@@ -204,10 +204,10 @@ const TypingWelcome = ({ employeeName, onComplete }: { employeeName: string, onC
       
       return () => clearTimeout(timeout)
     } else {
-      // Wait 2 seconds after typing is complete, then fade out
+
       const fadeTimeout = setTimeout(() => {
         onComplete()
-      }, 600)
+      }, 0)
       
       return () => clearTimeout(fadeTimeout)
     }
@@ -628,7 +628,7 @@ const deleteAnnouncement = async (id: string) => {
       
       if (user) {
         const welcomeKey = `opsclad_welcome_shown_${user.id}`
-        const alreadyShown = localStorage.getItem(welcomeKey)
+        const alreadyShown = sessionStorage.getItem(welcomeKey)
 
         // 🔹 Load employee name for welcome screen
         const { data: profile } = await supabase
@@ -877,13 +877,11 @@ const visibleAnnouncements = announcements
     } = await supabase.auth.getUser()
 
     if (user) {
-      localStorage.setItem(`opsclad_welcome_shown_${user.id}`, "true")
+      sessionStorage.setItem(`opsclad_welcome_shown_${user.id}`, "true")
     }
 
     setShowWelcome(false)
-
     setShowContent(true)
-
   }
 
 
@@ -1037,6 +1035,18 @@ const visibleAnnouncements = announcements
   // Show calendar content after welcome
   if (!showContent) {
     return <div className="bg-gray-800 min-h-screen" />
+  }
+
+  const handleLogout = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (user) {
+      sessionStorage.removeItem(`opsclad_welcome_shown_${user.id}`)
+    }
+
+    await supabase.auth.signOut()
   }
 
   return (
