@@ -10,6 +10,7 @@ interface UserPermissions {
   task_tracker: boolean;
   leave_tracker: boolean;
   skill_tracker: boolean;
+  expenses_tracker: boolean;      // expenses
   user_role_management: boolean;
   settings: boolean;
 }
@@ -81,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         task_tracker: Boolean(userRole.permissions?.task_tracker),
         leave_tracker: Boolean(userRole.permissions?.leave_tracker),
         skill_tracker: Boolean(userRole.permissions?.skill_tracker),
+        expenses_tracker: Boolean(userRole.permissions?.expenses_tracker), // expenses
         user_role_management: Boolean(userRole.permissions?.user_role_management),
         settings: Boolean(userRole.permissions?.settings),
       };

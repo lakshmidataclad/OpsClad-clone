@@ -21,11 +21,14 @@ import TaskReportsTab from "@/components/dashboard/task-reports-tab";
 import PTOTrackingTab from "@/components/dashboard/pto-tracking-tab";
 import ReminderEmailTab from "@/components/dashboard/reminder-email-tab";
 import ManagerSkillTracker from '@/components/dashboard/skill-tracking-tab';
+import ManagerExpensesTracker from '@/components/dashboard/expenses-tab';
+
 import UserRoleManagementTab from "@/components/dashboard/user-role-management";
 import EmployeeReportsTab from '@/components/dashboard/employee-time-reports';
 import EmployeeTaskView from '@/components/dashboard/employee-task-view';
 import EmployeePTOTab from '@/components/dashboard/employee-pto-view';
 import EmployeeSkillTracker from '@/components/dashboard/employee-skill-view';
+import EmployeeExpenses from '@/components/dashboard/employee-expenses';
 import HomePage from '@/components/dashboard/home';
 
 export default function DashboardPage() {
@@ -38,6 +41,8 @@ export default function DashboardPage() {
     const [activeTaskTab, setActiveTaskTab] = useState("overview");
     const [activePTOTab, setActivePTOTab] = useState("pto-tracking");
     const [activeSkillTab, setActiveSkillTab] = useState("skill-tracker");
+    const [activeExpensesTab, setActiveExpensesTab] = useState("expenses-tracker");
+
     const [activeHomeTab, setActiveHomeTab] = useState("home");
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -67,6 +72,8 @@ export default function DashboardPage() {
                 setActiveDashboard("settings");
             } else if (currentUser.permissions.skill_tracker){
                 setActiveDashboard("skill-tracker")
+            } else if (currentUser.permissions.expenses_tracker){
+                setActiveDashboard("expenses-tracker")
             } else {
                 setActiveDashboard("home");
             }
@@ -118,6 +125,8 @@ export default function DashboardPage() {
                 return currentUser.permissions.settings;
             case "skill-tracker":
                 return currentUser.permissions.skill_tracker;
+            case "expenses-tracker":
+                return currentUser.permissions.expenses_tracker;
             default:
                 return false;
         }
@@ -177,6 +186,19 @@ export default function DashboardPage() {
         else if (currentUser.role === "employee") {
             return tab === "employee-skills" && currentUser.permissions.skill_tracker;
         }
+        return false;
+    };
+
+    const hasExpensesAccess = (tab: string) => {
+        if (!currentUser || !currentUser.permissions) return false;
+
+        if (currentUser.role === "manager") {
+            return currentUser.permissions.expenses_tracker;
+        } 
+        else if (currentUser.role === "employee") {
+            return tab === "employee-expenses" && currentUser.permissions.expenses_tracker;
+        }
+
         return false;
     };
 
@@ -282,6 +304,13 @@ export default function DashboardPage() {
                             </button>
                         </li>
                     )}
+                    {hasAccess("expenses-tracker") && (
+                        <li>
+                            <button onClick={() => setActiveDashboard("expenses-tracker")} className={`w-full text-left py-3 px-4 rounded-lg transition-all duration-200 ease-in-out flex items-center ${activeDashboard === "expenses-tracker" ? "bg-red-600 text-white shadow-md transform scale-105" : "hover:bg-gray-700 text-gray-300 hover:text-white"} focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75`}>
+                                {!isSidebarCollapsed && <span className="truncate">Expenses Tracker</span>}
+                            </button>
+                        </li>
+                    )}
                     {hasAccess("user-role-management") && (
                         <li>
                             <button onClick={() => setActiveDashboard("user-role-management")} className={`w-full text-left py-3 px-4 rounded-lg transition-all duration-200 ease-in-out flex items-center ${activeDashboard === "user-role-management" ? "bg-red-600 text-white shadow-md transform scale-105" : "hover:bg-gray-700 text-gray-300 hover:text-white"} focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75`}>
@@ -366,7 +395,7 @@ export default function DashboardPage() {
                             // Employee view with only the tasks tab
                             <Tabs defaultValue="employee-tasks" value={activeTaskTab} onValueChange={setActiveTaskTab}>
                                 {hasTaskTabAccess("employee-tasks") && (
-                                    <EmployeeTaskView currentUser={currentUser.username} />
+                                    <EmployeeTaskView currentUser={currentUser.employee_id ?? currentUser.email ?? "unknown"} />
                                 )}
                             </Tabs>
                         )}
@@ -408,6 +437,37 @@ export default function DashboardPage() {
                         )}
                     </Card>
                 )}
+
+                {activeDashboard === "expenses-tracker" && hasAccess("expenses-tracker") && (
+                    <Card className="bg-gray-800 text-white shadow-xl rounded-lg">
+                        {currentUser.role === 'manager' ? (
+                            // ✅ Manager Expenses View
+                            <Tabs
+                                defaultValue="expenses-tracker"
+                                value={activeExpensesTab}
+                                onValueChange={setActiveExpensesTab}
+                            >
+                                <TabsContent value="expenses-tracker" className="p-0">
+                                    <ManagerExpensesTracker />
+                                </TabsContent>
+                            </Tabs>
+                        ) : (
+                            // ✅ Employee Expenses View
+                            <Tabs
+                                defaultValue="employee-expenses"
+                                value={activeExpensesTab}
+                                onValueChange={setActiveExpensesTab}
+                            >
+                                {hasExpensesAccess("employee-expenses") && (
+                                    <TabsContent value="employee-expenses" className="p-0">
+                                        <EmployeeExpenses />
+                                    </TabsContent>
+                                )}
+                            </Tabs>
+                        )}
+                    </Card>
+                )}
+
 
                 {activeDashboard === "home" &&(
                     <Card className="bg-gray-800 text-white shadow-xl rounded-lg">
