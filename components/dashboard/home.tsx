@@ -39,6 +39,17 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 
 
+interface TaskOverview {
+  id: string
+  task_id: string
+  description: string | null
+  owner: string | null
+  department: string
+  start_date: string | null
+  estimated_completion_date: string | null
+  actual_completion_date: string | null
+  status: 'in_progress' | 'completed' | 'blocked'
+}
 
 
 interface PTORecord {
@@ -426,6 +437,9 @@ export default function HomePage() {
   const [socialInput, setSocialInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  const [tasks, setTasks] = useState<TaskOverview[]>([])
+
+
   useLayoutEffect(() => {
     messagesEndRef.current?.scrollIntoView({
       behavior: socialMessages.length > 1 ? "smooth" : "auto",
@@ -616,6 +630,18 @@ const deleteAnnouncement = async (id: string) => {
         .order("created_at", { ascending: true })
 
       setSocialMessages(socialData || [])
+
+      // Load In-Progress Tasks
+      const { data: taskData, error: taskError } = await supabase
+        .from("task_overviews")
+        .select("*")
+        .eq("status", "in_progress")
+
+      if (taskError) {
+        console.error("Error loading tasks:", taskError)
+      } else {
+        setTasks(taskData || [])
+      }
             
 
     if (!error) setAnnouncements(announcementData || [])
@@ -961,6 +987,29 @@ const visibleAnnouncements = announcements
   }
 
 
+  const visibleTasks = useMemo(() => {
+    return tasks.filter(task => {
+      if (!task.start_date || !task.estimated_completion_date) return false
+
+      const start = new Date(task.start_date)
+      const end = new Date(task.estimated_completion_date)
+
+      // must overlap selected month
+      const overlapsMonth =
+        start <= monthEnd && end >= monthStart
+
+      if (!overlapsMonth) return false
+
+      // employee: only own tasks
+      if (userRole === "employee") {
+        return task.owner === employeeName
+      }
+
+      return true // manager
+    })
+  }, [tasks, userRole, employeeName, monthStart, monthEnd])
+
+
 
   const upcomingEvents = useMemo(() => {
     const events: {
@@ -1231,16 +1280,58 @@ const visibleAnnouncements = announcements
 
 
 
-        {/* Empty Boxes */}
+        {/* Social and Tasks */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="bg-gray-900 border-gray-700 min-h-[120px]">
+          <Card className="bg-gray-900 border-gray-700 h-[420px] flex flex-col">
             <CardHeader>
-            <CardTitle className="text-white">News</CardTitle>
+              <CardTitle className="text-white">Tasks In Progress</CardTitle>
             </CardHeader>
-            <CardContent className="text-gray-400 text-sm">
-              {/* future content */}
+
+            <CardContent className="space-y-3">
+              {visibleTasks.length === 0 ? (
+                <p className="text-gray-400 text-sm">
+                  No in-progress tasks for this month
+                </p>
+              ) : (
+                visibleTasks.map(task => (
+                  <div
+                    key={task.id}
+                    className="p-3 rounded-lg bg-gray-800 border border-gray-700 hover:border-orange-500/50 transition"
+                  >
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <p className="text-white font-medium">
+                          {task.task_id}
+                        </p>
+                        {task.description && (
+                          <p className="text-sm text-gray-400 mt-1">
+                            {task.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <Badge
+                        variant="outline"
+                        className="border-orange-500 text-orange-400"
+                      >
+                        In Progress
+                      </Badge>
+                    </div>
+
+                    <div className="mt-2 text-xs text-gray-500 flex gap-4">
+                      {task.owner && <span>Owner: {task.owner}</span>}
+                      {task.estimated_completion_date && (
+                        <span>
+                          ETA: {task.estimated_completion_date}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
+
 
           <Card className="bg-gray-900 border-gray-700 h-[420px] flex flex-col">
             <CardHeader>
