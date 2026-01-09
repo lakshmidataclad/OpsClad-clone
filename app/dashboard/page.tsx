@@ -337,6 +337,7 @@ export default function DashboardPage() {
                             {currentUser.permissions.task_tracker && <Badge variant="outline" className="border-gray-200 text-gray-200 text-xs">Tasks</Badge>}
                             {currentUser.permissions.leave_tracker && <Badge variant="outline" className="border-gray-200 text-gray-200 text-xs">Leave</Badge>}
                             {/*{currentUser.permissions.skill_tracker && <Badge variant="outline" className="border-gray-200 text-gray-200 text-xs">Skills</Badge>}*/}
+                            {currentUser.permissions.expenses_tracker && <Badge variant="outline" className="border-gray-200 text-gray-200 text-xs">Expenses Tracker</Badge>}
                             {currentUser.permissions.user_role_management && <Badge variant="outline" className="border-gray-200 text-gray-200 text-xs">User Roles</Badge>}
                             {currentUser.permissions.settings && <Badge variant="outline" className="border-gray-200 text-gray-200 text-xs">Settings</Badge>}
                         </div>

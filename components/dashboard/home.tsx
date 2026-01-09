@@ -992,8 +992,10 @@ const visibleAnnouncements = announcements
       if (!task.start_date || !task.estimated_completion_date) return false
 
       const start = new Date(task.start_date)
-      const end = new Date(task.estimated_completion_date)
-
+      const end = new Date(
+        task.actual_completion_date ??
+        task.estimated_completion_date
+      )
       // must overlap selected month
       const overlapsMonth =
         start <= monthEnd && end >= monthStart
@@ -1287,7 +1289,7 @@ const visibleAnnouncements = announcements
               <CardTitle className="text-white">Tasks In Progress</CardTitle>
             </CardHeader>
 
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 overflow-y-auto flex-1 no-scrollbar">
               {visibleTasks.length === 0 ? (
                 <p className="text-gray-400 text-sm">
                   No in-progress tasks for this month
