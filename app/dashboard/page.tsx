@@ -20,14 +20,14 @@ import TaskOverviewTab from "@/components/dashboard/task-overview-tab";
 import TaskReportsTab from "@/components/dashboard/task-reports-tab";
 import PTOTrackingTab from "@/components/dashboard/pto-tracking-tab";
 import ReminderEmailTab from "@/components/dashboard/reminder-email-tab";
-import ManagerSkillTracker from '@/components/dashboard/skill-tracking-tab';
+//import ManagerSkillTracker from '@/components/dashboard/skill-tracking-tab';
 import ManagerExpensesTracker from '@/components/dashboard/expenses-tab';
 
 import UserRoleManagementTab from "@/components/dashboard/user-role-management";
 import EmployeeReportsTab from '@/components/dashboard/employee-time-reports';
 import EmployeeTaskView from '@/components/dashboard/employee-task-view';
 import EmployeePTOTab from '@/components/dashboard/employee-pto-view';
-import EmployeeSkillTracker from '@/components/dashboard/employee-skill-view';
+//import EmployeeSkillTracker from '@/components/dashboard/employee-skill-view';
 import EmployeeExpenses from '@/components/dashboard/employee-expenses';
 import HomePage from '@/components/dashboard/home';
 
@@ -40,7 +40,7 @@ export default function DashboardPage() {
     const [activeTimesheetTab, setActiveTimesheetTab] = useState("reminders"); // Updated default tab for timesheet
     const [activeTaskTab, setActiveTaskTab] = useState("overview");
     const [activePTOTab, setActivePTOTab] = useState("pto-tracking");
-    const [activeSkillTab, setActiveSkillTab] = useState("skill-tracker");
+    //const [activeSkillTab, setActiveSkillTab] = useState("skill-tracker");
     const [activeExpensesTab, setActiveExpensesTab] = useState("expenses-tracker");
 
     const [activeHomeTab, setActiveHomeTab] = useState("home");
@@ -70,10 +70,10 @@ export default function DashboardPage() {
                 setActiveDashboard("user-role-management");
             } else if (currentUser.permissions.settings) { // New condition for settings
                 setActiveDashboard("settings");
-            } else if (currentUser.permissions.skill_tracker){
-                setActiveDashboard("skill-tracker")
+            //} else if (currentUser.permissions.skill_tracker){
+            //    setActiveDashboard("skill-tracker");
             } else if (currentUser.permissions.expenses_tracker){
-                setActiveDashboard("expenses-tracker")
+                setActiveDashboard("expenses-tracker");
             } else {
                 setActiveDashboard("home");
             }
@@ -123,8 +123,8 @@ export default function DashboardPage() {
                 return currentUser.permissions.user_role_management;
             case "settings": // New access check
                 return currentUser.permissions.settings;
-            case "skill-tracker":
-                return currentUser.permissions.skill_tracker;
+            //case "skill-tracker":
+            //   return currentUser.permissions.skill_tracker;
             case "expenses-tracker":
                 return currentUser.permissions.expenses_tracker;
             default:
@@ -176,18 +176,18 @@ export default function DashboardPage() {
         return false;
     };
 
-    const hasSkillTabAccess = (tab: string) => {
-        if (!currentUser || !currentUser.permissions) return false;
-        // All Timesheet tabs, except employee-reports, are for managers only
-        if (currentUser.role === "manager") {
-            return currentUser.permissions.skill_tracker;
-        } 
+    //const hasSkillTabAccess = (tab: string) => {
+    //    if (!currentUser || !currentUser.permissions) return false;
+    //    // All Timesheet tabs, except employee-reports, are for managers only
+    //    if (currentUser.role === "manager") {
+    //        return currentUser.permissions.skill_tracker;
+    //    } 
         // The employee-reports tab is only for employees
-        else if (currentUser.role === "employee") {
-            return tab === "employee-skills" && currentUser.permissions.skill_tracker;
-        }
-        return false;
-    };
+    //    else if (currentUser.role === "employee") {
+    //       return tab === "employee-skills" && currentUser.permissions.skill_tracker;
+    //    }
+    //    return false;
+    //};
 
     const hasExpensesAccess = (tab: string) => {
         if (!currentUser || !currentUser.permissions) return false;
@@ -297,13 +297,15 @@ export default function DashboardPage() {
                             </button>
                         </li>
                     )}
-                    {hasAccess("skill-tracker") && (
+
+                    {/*{hasAccess("skill-tracker") && (
                         <li>
                             <button onClick={() => setActiveDashboard("skill-tracker")} className={`w-full text-left py-3 px-4 rounded-lg transition-all duration-200 ease-in-out flex items-center ${activeDashboard === "skill-tracker" ? "bg-red-600 text-white shadow-md transform scale-105" : "hover:bg-gray-700 text-gray-300 hover:text-white"} focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75`}>
                                 {!isSidebarCollapsed && <span className="truncate">Skill Tracker</span>}
                             </button>
                         </li>
-                    )}
+                    )}*/}
+
                     {hasAccess("expenses-tracker") && (
                         <li>
                             <button onClick={() => setActiveDashboard("expenses-tracker")} className={`w-full text-left py-3 px-4 rounded-lg transition-all duration-200 ease-in-out flex items-center ${activeDashboard === "expenses-tracker" ? "bg-red-600 text-white shadow-md transform scale-105" : "hover:bg-gray-700 text-gray-300 hover:text-white"} focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75`}>
@@ -334,7 +336,7 @@ export default function DashboardPage() {
                             {currentUser.permissions.timesheet_tracker && <Badge variant="outline" className="border-gray-200 text-gray-200 text-xs">Timesheets</Badge>}
                             {currentUser.permissions.task_tracker && <Badge variant="outline" className="border-gray-200 text-gray-200 text-xs">Tasks</Badge>}
                             {currentUser.permissions.leave_tracker && <Badge variant="outline" className="border-gray-200 text-gray-200 text-xs">Leave</Badge>}
-                            {currentUser.permissions.skill_tracker && <Badge variant="outline" className="border-gray-200 text-gray-200 text-xs">Skills</Badge>}
+                            {/*{currentUser.permissions.skill_tracker && <Badge variant="outline" className="border-gray-200 text-gray-200 text-xs">Skills</Badge>}*/}
                             {currentUser.permissions.user_role_management && <Badge variant="outline" className="border-gray-200 text-gray-200 text-xs">User Roles</Badge>}
                             {currentUser.permissions.settings && <Badge variant="outline" className="border-gray-200 text-gray-200 text-xs">Settings</Badge>}
                         </div>
@@ -420,7 +422,7 @@ export default function DashboardPage() {
                     </Card>
                 )}
 
-                {activeDashboard === "skill-tracker" && hasAccess("skill-tracker") && (
+                {/*{activeDashboard === "skill-tracker" && hasAccess("skill-tracker") && (
                     <Card className="bg-gray-800 text-white shadow-xl rounded-lg">
                         {currentUser.role === 'manager' ? (
                             // Manager view with all tabs
@@ -436,7 +438,7 @@ export default function DashboardPage() {
                             </Tabs>
                         )}
                     </Card>
-                )}
+                )}*/}
 
                 {activeDashboard === "expenses-tracker" && hasAccess("expenses-tracker") && (
                     <Card className="bg-gray-800 text-white shadow-xl rounded-lg">
