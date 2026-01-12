@@ -72,8 +72,14 @@ export default function DashboardPage() {
                 setActiveDashboard("settings");
             //} else if (currentUser.permissions.skill_tracker){
             //    setActiveDashboard("skill-tracker");
-            } else if (currentUser.permissions.expenses_tracker){
+            } else if (currentUser.permissions.expenses_tracker) {
                 setActiveDashboard("expenses-tracker");
+
+                if (currentUser.role === "manager") {
+                    setActiveExpensesTab("expenses-tracker");
+                } else {
+                    setActiveExpensesTab("employee-expenses");
+                }
             } else {
                 setActiveDashboard("home");
             }

@@ -55,7 +55,8 @@ interface UserRole {
     timesheet_tracker: boolean;
     task_tracker: boolean;
     leave_tracker: boolean;
-    skill_tracker: boolean;
+    //skill_tracker: boolean;
+    expenses_tracker: boolean; // expenses
     user_role_management: boolean;
     settings: boolean;
   };
@@ -81,7 +82,8 @@ interface NewUserForm {
     timesheet_tracker: boolean;
     task_tracker: boolean;
     leave_tracker: boolean;
-    skill_tracker: boolean; 
+    //skill_tracker: boolean; 
+    expenses_tracker: boolean; // expenses
     user_role_management: boolean;
     settings: boolean;
   };
@@ -91,7 +93,8 @@ const defaultPermissions = {
   timesheet_tracker: false,
   task_tracker: false,
   leave_tracker: false,
-  skill_tracker: false, 
+  //skill_tracker: false,
+  expenses_tracker: false, // expenses
   user_role_management: false,
   settings: false,
 };
@@ -101,7 +104,8 @@ const rolePermissionTemplates = {
     timesheet_tracker: true,
     task_tracker: true,
     leave_tracker: true,
-    skill_tracker: true, 
+    //skill_tracker: true,
+    expenses_tracker: true, // expenses
     user_role_management: true,
     settings: true,
   },
@@ -109,7 +113,8 @@ const rolePermissionTemplates = {
     timesheet_tracker: true,
     task_tracker: true,
     leave_tracker: false,
-    skill_tracker: true, 
+    //skill_tracker: true,
+    expenses_tracker: true, // expenses
     user_role_management: false,
     settings: false,
   },
@@ -117,11 +122,13 @@ const rolePermissionTemplates = {
     timesheet_tracker: true,
     task_tracker: true,
     leave_tracker: false,
-    skill_tracker: false, 
+    //skill_tracker: false,
+    expenses_tracker: false, // expenses
     user_role_management: false,
     settings: false,
   },
 };
+
 
 export default function UserRoleManagementTab() {
   const [users, setUsers] = useState<UserRole[]>([]);
@@ -755,14 +762,25 @@ export default function UserRoleManagementTab() {
                                 Leave
                               </Badge>
                             )}
-                            {user.permissions.skill_tracker && (
+
+                            {user.permissions.expenses_tracker && (
+                              <Badge
+                                variant="outline"
+                                className="border-gray-800 text-gray-800 text-xs"
+                              >
+                                Expenses
+                              </Badge>
+                            )}
+
+                            {/*{user.permissions.skill_tracker && (
                               <Badge
                                 variant="outline"
                                 className="border-gray-800 text-gray-800 text-xs"
                               >
                                 Skills
                               </Badge>
-                            )}
+                            )}*/}
+
                             {user.permissions.user_role_management && (
                               <Badge
                                 variant="outline"
@@ -912,27 +930,28 @@ export default function UserRoleManagementTab() {
             <div>
               <Label className="text-white">Permissions</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                {Object.entries(defaultPermissions).map(([permission, _]) => (
-                  <div key={permission} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`assign-${permission}`}
-                      checked={
-                        newUserForm.permissions[
-                          permission as keyof typeof defaultPermissions
-                        ]
-                      }
-                      onCheckedChange={(checked) =>
-                        handlePermissionChange(
-                          permission as keyof typeof defaultPermissions,
-                          checked as boolean
-                        )
-                      }
-                    />
-                    <Label htmlFor={`assign-${permission}`} className="text-white text-sm">
-                      {permission.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </Label>
-                  </div>
-                ))}
+              {Object.entries(defaultPermissions).map(([permission]) => (
+                <div key={permission} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`assign-${permission}`}
+                    checked={
+                      newUserForm.permissions[
+                        permission as keyof typeof defaultPermissions
+                      ]
+                    }
+                    onCheckedChange={(checked) =>
+                      handlePermissionChange(
+                        permission as keyof typeof defaultPermissions,
+                        checked as boolean
+                      )
+                    }
+                  />
+                  <Label htmlFor={`assign-${permission}`}>
+                    {permission.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}
+                  </Label>
+                </div>
+              ))}
+
               </div>
             </div>
 
