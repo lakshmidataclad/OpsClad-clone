@@ -463,12 +463,12 @@ export default function DashboardPage() {
                         ) : (
                             // ✅ Employee Expenses View
                             <Tabs
-                                defaultValue="employee-expenses"
+                                defaultValue="expenses-tracker"
                                 value={activeExpensesTab}
                                 onValueChange={setActiveExpensesTab}
                             >
-                                {hasExpensesAccess("employee-expenses") && (
-                                    <TabsContent value="employee-expenses" className="p-0">
+                                {hasExpensesAccess("expenses-tracker") && (
+                                    <TabsContent value="expenses-tracker" className="p-0">
                                         <EmployeeExpenses />
                                     </TabsContent>
                                 )}
