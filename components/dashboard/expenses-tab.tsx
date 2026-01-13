@@ -1,65 +1,89 @@
-'use client';
+"use client"
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from '@/components/ui/card';
-import { useAuth } from '@/hooks/use-auth';
-import { Wallet, ShieldCheck } from 'lucide-react';
+import { useEffect, useState } from "react"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import { useToast } from "@/hooks/use-toast"
 
-export default function ManagerExpensesPage() {
-  const router = useRouter();
-  const { authState, userProfile } = useAuth();
+export default function ManagerExpensesTracker() {
+  const [expenses, setExpenses] = useState<any[]>([])
+  const [processing, setProcessing] = useState<string | null>(null)
+  const { toast } = useToast()
 
-  // 🔐 Route protection (MANAGER ONLY)
   useEffect(() => {
-    if (authState === 'unauthenticated') {
-      router.replace('/');
-      return;
-    }
+    loadExpenses()
+  }, [])
 
-    if (
-      authState === 'authenticated' &&
-      userProfile?.role !== 'manager'
-    ) {
-      router.replace('/dashboard');
-    }
-  }, [authState, userProfile, router]);
+  const loadExpenses = async () => {
+    const { data } = await supabase
+      .from("expenses")
+      .select("*")
+      .order("created_at", { ascending: false })
 
-  if (authState !== 'authenticated') {
-    return null;
+    setExpenses(data || [])
+  }
+
+  const updateStatus = async (id: string, status: "approved" | "rejected") => {
+    setProcessing(id)
+
+    await supabase.from("expenses").update({
+      status,
+      approved_at: new Date().toISOString(),
+    }).eq("id", id)
+
+    toast({ title: `Expense ${status}` })
+    loadExpenses()
+    setProcessing(null)
   }
 
   return (
-    <div className="min-h-screen bg-black p-8 text-white">
-      <Card className="bg-gray-900 border-gray-700 shadow-xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
-            <ShieldCheck className="w-6 h-6 text-red-500" />
-            Expenses Management
-          </CardTitle>
-          <CardDescription className="text-gray-400">
-            Review, approve, and manage employee expense claims
-          </CardDescription>
-        </CardHeader>
+    <Card className="bg-gray-900 text-white">
+      <CardHeader>
+        <CardTitle>Expenses Approval</CardTitle>
+      </CardHeader>
 
-        <CardContent>
-          <div className="border border-dashed border-gray-700 rounded-lg p-8 text-center">
-            <p className="text-gray-400">
-              Manager expense dashboard coming soon
-            </p>
-            <p className="text-sm text-gray-500 mt-2">
-              You’ll be able to review, approve, reject, and audit employee
-              expense submissions here.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Employee</TableHead>
+              <TableHead>Amount</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Invoice</TableHead>
+              <TableHead>Action</TableHead>
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            {expenses.map(e => (
+              <TableRow key={e.id}>
+                <TableCell>{e.employee_name}</TableCell>
+                <TableCell>${e.amount}</TableCell>
+                <TableCell>{e.reimbursement_type}</TableCell>
+                <TableCell>
+                  <Badge>{e.status}</Badge>
+                </TableCell>
+                <TableCell>
+                  <a href={e.invoice_url} target="_blank" className="text-blue-400">View</a>
+                </TableCell>
+                <TableCell className="space-x-2">
+                  <Button size="sm" onClick={() => updateStatus(e.id, "approved")} disabled={processing === e.id}>
+                    {processing === e.id ? <Loader2 className="animate-spin" /> : <CheckCircle />}
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => updateStatus(e.id, "rejected")} disabled={processing === e.id}>
+                    <XCircle />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
 }
