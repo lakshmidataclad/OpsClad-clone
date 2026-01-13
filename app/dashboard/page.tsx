@@ -427,23 +427,6 @@ export default function DashboardPage() {
                     </Card>
                 )}
 
-                {/*{activeDashboard === "skill-tracker" && hasAccess("skill-tracker") && (
-                    <Card className="bg-gray-800 text-white shadow-xl rounded-lg">
-                        {currentUser.role === 'manager' ? (
-                            // Manager view with all tabs
-                            <Tabs defaultValue="skill-tracker" value={activeSkillTab} onValueChange={setActiveSkillTab}>
-                                {hasSkillTabAccess("skill-tracker") && <TabsContent value="skill-tracker" className="p-0"><ManagerSkillTracker/></TabsContent>}
-                            </Tabs>
-                        ) : (
-                            // Employee view with only the tasks tab
-                            <Tabs defaultValue="employee-skills" value={activeSkillTab} onValueChange={setActiveSkillTab}>
-                                {hasSkillTabAccess("employee-skills") && (
-                                    <EmployeeSkillTracker />
-                                )}
-                            </Tabs>
-                        )}
-                    </Card>
-                )}*/}
 
                 {activeDashboard === "expenses-tracker" && hasAccess("expenses-tracker") && (
                     <Card className="bg-gray-800 text-white shadow-xl rounded-lg">
