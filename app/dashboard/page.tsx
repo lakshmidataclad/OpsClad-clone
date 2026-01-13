@@ -447,18 +447,14 @@ export default function DashboardPage() {
 
                 {activeDashboard === "expenses-tracker" && hasAccess("expenses-tracker") && (
                     <Card className="bg-gray-800 text-white shadow-xl rounded-lg">
-                        {currentUser.role === "manager" ? (
-                            <Tabs defaultValue="expenses-tracker" value={activeExpensesTab} onValueChange={setActiveExpensesTab}
-                            >
-                                {hasExpensesTabAccess("expenses-tracker") && (
-                                        <ManagerExpensesTracker />
-                                )}
+                        {currentUser.role === 'manager' ? (
+                            <Tabs defaultValue="expenses-tracker" value={activeExpensesTab} onValueChange={setActiveExpensesTab}>
+                                {hasExpensesTabAccess("expenses-tracker") && <TabsContent value="expenses-tracker" className="p-0"><ManagerExpensesTracker/></TabsContent>}
                             </Tabs>
                         ) : (
-                            <Tabs defaultValue="employee-expenses" value={activeExpensesTab} onValueChange={setActiveExpensesTab}
-                            >
+                            <Tabs defaultValue="employee-expenses" value={activeExpensesTab} onValueChange={setActiveExpensesTab}>
                                 {hasExpensesTabAccess("employee-expenses") && (
-                                        <EmployeeExpenses />
+                                    <EmployeeExpenses />
                                 )}
                             </Tabs>
                         )}
