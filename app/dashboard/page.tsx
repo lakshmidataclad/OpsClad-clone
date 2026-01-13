@@ -74,12 +74,6 @@ export default function DashboardPage() {
             //    setActiveDashboard("skill-tracker");
             } else if (currentUser.permissions.expenses_tracker) {
                 setActiveDashboard("expenses-tracker");
-
-                if (currentUser.role === "manager") {
-                    setActiveExpensesTab("expenses-tracker");
-                } else {
-                    setActiveExpensesTab("employee-expenses");
-                }
             } else {
                 setActiveDashboard("home");
             }
@@ -195,18 +189,22 @@ export default function DashboardPage() {
     //    return false;
     //};
 
-    const hasExpensesAccess = (tab: string) => {
+    const hasExpensesTabAccess = (tab: string) => {
         if (!currentUser || !currentUser.permissions) return false;
 
+        // Manager: access based on permission only
         if (currentUser.role === "manager") {
             return currentUser.permissions.expenses_tracker;
-        } 
-        else if (currentUser.role === "employee") {
+        }
+
+        // Employee: must match employee tab AND have permission
+        if (currentUser.role === "employee") {
             return tab === "employee-expenses" && currentUser.permissions.expenses_tracker;
         }
 
         return false;
     };
+
 
     // Loading state
     if (authState === 'loading') {
@@ -449,26 +447,32 @@ export default function DashboardPage() {
 
                 {activeDashboard === "expenses-tracker" && hasAccess("expenses-tracker") && (
                     <Card className="bg-gray-800 text-white shadow-xl rounded-lg">
-                        {currentUser.role === 'manager' ? (
-                            // ✅ Manager Expenses View
+                        {currentUser.role === "manager" ? (
                             <Tabs
                                 defaultValue="expenses-tracker"
                                 value={activeExpensesTab}
                                 onValueChange={setActiveExpensesTab}
                             >
-                                <TabsContent value="expenses-tracker" className="p-0">
-                                    <ManagerExpensesTracker />
-                                </TabsContent>
+                                {/* Optional: hidden TabsList for consistency */}
+                                <TabsList className="hidden" />
+
+                                {hasExpensesTabAccess("expenses-tracker") && (
+                                    <TabsContent value="expenses-tracker" className="p-0">
+                                        <ManagerExpensesTracker />
+                                    </TabsContent>
+                                )}
                             </Tabs>
                         ) : (
-                            // ✅ Employee Expenses View
                             <Tabs
-                                defaultValue="expenses-tracker"
+                                defaultValue="employee-expenses"
                                 value={activeExpensesTab}
                                 onValueChange={setActiveExpensesTab}
                             >
-                                {hasExpensesAccess("expenses-tracker") && (
-                                    <TabsContent value="expenses-tracker" className="p-0">
+                                {/* Optional: hidden TabsList for consistency */}
+                                <TabsList className="hidden" />
+
+                                {hasExpensesTabAccess("employee-expenses") && (
+                                    <TabsContent value="employee-expenses" className="p-0">
                                         <EmployeeExpenses />
                                     </TabsContent>
                                 )}
@@ -476,6 +480,7 @@ export default function DashboardPage() {
                         )}
                     </Card>
                 )}
+
 
 
                 {activeDashboard === "home" &&(
