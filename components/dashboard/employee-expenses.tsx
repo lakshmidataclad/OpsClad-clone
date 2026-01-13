@@ -11,7 +11,7 @@ import { Wallet } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { InvoiceFileSelector } from "@/app/api/invoiceFileSelector/invoiceFileSelector"
 
-export default function EmployeeExpensesPage() {
+export default function EmployeeExpenses() {
   const router = useRouter()
   const { authState, userProfile } = useAuth()
 
@@ -21,24 +21,9 @@ export default function EmployeeExpensesPage() {
   const [reimbursementType, setReimbursementType] = useState("")
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
 
-  // Route protection
-  useEffect(() => {
-    if (authState === "unauthenticated") {
-      router.replace("/")
-      return
-    }
-
-    if (
-      authState === "authenticated" &&
-      userProfile?.role !== "employee"
-    ) {
-      router.replace("/dashboard")
-    }
-  }, [authState, userProfile, router])
-
-  if (authState !== "authenticated" || !userProfile) {
-    return null
-  }
+if (!userProfile) {
+  return <div className="text-gray-400">Loading expenses...</div>
+}
 
   return (
     <div className="min-h-screen bg-black p-8 text-white">
