@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,9 +38,10 @@ interface Expense {
   id: string
   amount: string
   reimbursement_type: string
-  transaction_id: string | null
+  transaction_id: string
   invoice_url: string
   status: "pending" | "approved" | "rejected"
+  request_reason: string
   created_at: string
 }
 
@@ -52,10 +53,31 @@ export default function EmployeeExpenses() {
 
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [amount, setAmount] = useState("")
+  const [currency, setCurrency] = useState("")
   const [type, setType] = useState("")
-  const [txn, setTxn] = useState("")
+  const [description, setDescription] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
+
+  /* ---------------- CURRENCY LIST (Intl) ---------------- */
+
+  const currencyOptions = useMemo(() => {
+    return Intl.supportedValuesOf("currency").map(code => {
+      const formatter = new Intl.NumberFormat("en", {
+        style: "currency",
+        currency: code,
+        currencyDisplay: "narrowSymbol",
+      })
+
+      const symbol =
+        formatter.formatToParts(1).find(p => p.type === "currency")?.value || ""
+
+      return {
+        value: code,
+        label: `${code} — ${symbol}`,
+      }
+    })
+  }, [])
 
   /* ---------------- LOAD EXPENSES ---------------- */
 
@@ -84,10 +106,10 @@ export default function EmployeeExpenses() {
   const submitExpense = async () => {
     if (!userProfile?.email || !userProfile.employee_id) return
 
-    if (!amount || !type || !file) {
+    if (!amount || !currency || !type || !file || !description) {
       toast({
         title: "Missing fields",
-        description: "Amount, type, and invoice are required.",
+        description: "All fields including description are required.",
         variant: "destructive",
       })
       return
@@ -96,7 +118,13 @@ export default function EmployeeExpenses() {
     setLoading(true)
 
     try {
-      /* Upload invoice */
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[-:]/g, "")
+        .split(".")[0]
+
+      const transactionId = `REM-${userProfile.employee_id}-${timestamp}`
+
       const path = `${userProfile.employee_id}/${Date.now()}-${file.name}`
 
       const { data: upload, error: uploadError } = await supabase.storage
@@ -109,42 +137,39 @@ export default function EmployeeExpenses() {
         .from("expense-invoices")
         .getPublicUrl(upload.path).data.publicUrl
 
-      /* Insert expense record */
-      const { error: insertError } = await supabase.from("expenses").insert({
+      const { error } = await supabase.from("expenses").insert({
         employee_id: userProfile.employee_id,
         employee_name: userProfile.username,
         sender_email: userProfile.email,
-        amount,
+        amount: `${currency} ${Number(amount).toFixed(2)}`,
         reimbursement_type: type,
-        transaction_id: txn || null,
+        transaction_id: transactionId,
         invoice_url: invoiceUrl,
+        request_reason: description,
         status: "pending",
       })
 
-      if (insertError) throw insertError
+      if (error) throw error
 
       toast({ title: "Expense submitted for approval" })
 
-      /* Reset form */
       setAmount("")
+      setCurrency("")
       setType("")
-      setTxn("")
+      setDescription("")
       setFile(null)
 
       loadExpenses(userProfile.email)
 
-    } catch (err) {
+    } catch {
       toast({
         title: "Submission failed",
-        description: "Please try again.",
         variant: "destructive",
       })
     } finally {
       setLoading(false)
     }
   }
-
-  /* ---------------- RENDER GUARD ---------------- */
 
   if (!userProfile) return null
 
@@ -161,8 +186,8 @@ export default function EmployeeExpenses() {
 
       <CardContent className="space-y-6">
 
-        {/* FORM */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* INPUT ROW */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label>Amount</Label>
             <Input
@@ -173,11 +198,19 @@ export default function EmployeeExpenses() {
           </div>
 
           <div>
-            <Label>Transaction ID (optional)</Label>
-            <Input
-              value={txn}
-              onChange={(e) => setTxn(e.target.value)}
-            />
+            <Label>Currency</Label>
+            <Select value={currency} onValueChange={setCurrency}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select currency" />
+              </SelectTrigger>
+              <SelectContent className="max-h-64 overflow-y-auto">
+                {currencyOptions.map(c => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
@@ -191,17 +224,31 @@ export default function EmployeeExpenses() {
                 <SelectItem value="meals">Meals</SelectItem>
                 <SelectItem value="office">Office Supplies</SelectItem>
                 <SelectItem value="client">Client Expense</SelectItem>
+                <SelectItem value="professional">
+                  Professional Development
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
+        </div>
 
-          <div>
-            <Label>Invoice / Receipt</Label>
-            <Input
-              type="file"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-            />
-          </div>
+        {/* DESCRIPTION */}
+        <div>
+          <Label>Description</Label>
+          <Input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Explain the expense in detail"
+          />
+        </div>
+
+        {/* INVOICE */}
+        <div>
+          <Label>Invoice / Receipt</Label>
+          <Input
+            type="file"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+          />
         </div>
 
         <Button
@@ -216,6 +263,7 @@ export default function EmployeeExpenses() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Txn ID</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
@@ -224,9 +272,12 @@ export default function EmployeeExpenses() {
           </TableHeader>
 
           <TableBody>
-            {expenses.map((e) => (
+            {expenses.map(e => (
               <TableRow key={e.id}>
-                <TableCell>${e.amount}</TableCell>
+                <TableCell className="text-xs">
+                  {e.transaction_id}
+                </TableCell>
+                <TableCell>{e.amount}</TableCell>
                 <TableCell>{e.reimbursement_type}</TableCell>
                 <TableCell>
                   {e.status === "approved" && (
@@ -259,7 +310,10 @@ export default function EmployeeExpenses() {
 
             {expenses.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-gray-400 py-6">
+                <TableCell
+                  colSpan={5}
+                  className="text-center text-gray-400 py-6"
+                >
                   No expenses submitted yet
                 </TableCell>
               </TableRow>
