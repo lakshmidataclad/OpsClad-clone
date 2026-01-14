@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectTrigger,
@@ -58,6 +59,7 @@ export default function EmployeeExpenses() {
   const [description, setDescription] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   /* ---------------- CURRENCY LIST (Intl) ---------------- */
 
@@ -125,11 +127,12 @@ export default function EmployeeExpenses() {
 
       const transactionId = `REM-${userProfile.employee_id}-${timestamp}`
 
-      const path = `${userProfile.employee_id}/${Date.now()}-${file.name}`
+      const fileExtension = file.name.split(".").pop()
+      const path = `${userProfile.employee_id}/${transactionId}.${fileExtension}`
 
       const { data: upload, error: uploadError } = await supabase.storage
         .from("expense-invoices")
-        .upload(path, file)
+        .upload(path, file, { upsert: true })
 
       if (uploadError) throw uploadError
 
@@ -159,6 +162,7 @@ export default function EmployeeExpenses() {
       setType("")
       setDescription("")
       setFile(null)
+      setPreviewUrl(null)
 
       loadExpenses(userProfile.email)
 
@@ -190,15 +194,6 @@ export default function EmployeeExpenses() {
         {/* INPUT ROW */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label>Amount</Label>
-            <Input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          </div>
-
-          <div>
             <Label>Currency</Label>
             <Select value={currency} onValueChange={setCurrency}>
               <SelectTrigger>
@@ -212,6 +207,15 @@ export default function EmployeeExpenses() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+                    <div>
+            <Label>Amount</Label>
+            <Input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
           </div>
 
           <div>
@@ -236,20 +240,55 @@ export default function EmployeeExpenses() {
         {/* DESCRIPTION */}
         <div>
           <Label>Description</Label>
-          <Input
+          <Textarea
+            rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Explain the expense in detail"
+            className="resize-y"
+            maxLength={500}
           />
         </div>
 
         {/* INVOICE */}
         <div>
-          <Label>Invoice / Receipt</Label>
           <Input
             type="file"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            accept="image/*,.pdf"
+            onChange={(e) => {
+              const selectedFile = e.target.files?.[0] || null
+              setFile(selectedFile)
+
+              if (selectedFile) {
+                const url = URL.createObjectURL(selectedFile)
+                setPreviewUrl(url)
+              } else {
+                setPreviewUrl(null)
+              }
+            }}
           />
+
+          {previewUrl && (
+            <div className="mt-4 border border-gray-700 rounded-lg p-3 bg-gray-800">
+              <p className="text-sm text-gray-400 mb-2">Preview</p>
+
+              {file?.type.startsWith("image/") && (
+                <img
+                  src={previewUrl}
+                  alt="Invoice preview"
+                  className="max-h-64 rounded-md object-contain mx-auto"
+                />
+              )}
+
+              {file?.type === "application/pdf" && (
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-64 rounded-md"
+                  title="PDF Preview"
+                />
+              )}
+            </div>
+          )}
         </div>
 
         <Button
