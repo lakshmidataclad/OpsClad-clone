@@ -653,68 +653,126 @@ export default function SettingsTab() {
 
 
 
-      <Card className="bg-white text-gray-800">
-        <CardHeader>
-          <CardTitle>Google Drive (Expense Invoices)</CardTitle>
-        </CardHeader>
+      
 
-        <CardContent className="space-y-4">
+<Card className="bg-white text-gray-800">
+  <CardHeader>
+    <CardTitle>Google Drive (Expense Invoices)</CardTitle>
+  </CardHeader>
 
-          <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${driveConnected ? "bg-green-500" : "bg-red-500"}`} />
-            <span>
-              {driveConnected
-                ? `Default Drive: ${driveEmail}`
-                : "No Drive account configured"}
-            </span>
-          </div>
+  <CardContent className="space-y-4">
+    {/* STATUS */}
+    <div className="flex items-center gap-2">
+      <div
+        className={`w-3 h-3 rounded-full ${
+          driveConnected ? "bg-green-500" : "bg-red-500"
+        }`}
+      />
+      <span>
+        {driveConnected ? (
+          <span className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            Connected to {driveEmail}
+          </span>
+        ) : (
+          "Not connected"
+        )}
+      </span>
+    </div>
 
-          {currentUser?.role === "manager" && (
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault()
-                await fetch("/api/gdrive", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    email: driveEmail,
-                    userRole: currentUser.role,
-                    userId: currentUser.user_id,
-                  }),
-                })
-                toast({ title: "Google Drive set as default" })
-                setDriveConnected(true)
-                setDriveEmail(driveEmail)
-              }}
-              className="space-y-3"
-            >
-              <div>
-                <Label>Google Drive Gmail</Label>
-                <Input
-                  type="email"
-                  value={driveEmail}
-                  onChange={(e) => setDriveEmail(e.target.value)}
-                  placeholder="finance.drive@gmail.com"
-                />
-              </div>
+    {/* CONNECTED INFO */}
+    {driveConnected && (
+      <Alert className="bg-green-50 border-green-200">
+        <CheckCircle className="h-4 w-4 text-green-500" />
+        <AlertTitle className="text-green-700">
+          Google Drive Connected
+        </AlertTitle>
+        <AlertDescription className="text-green-600">
+          All expense invoices will be automatically uploaded to this
+          company Google Drive account.
+        </AlertDescription>
+      </Alert>
+    )}
 
-              <Button className="bg-red-500 text-white">
-                Set as Default Drive
-              </Button>
-            </form>
-          )}
+    {/* INFO */}
+    <Alert className="bg-blue-50 border-blue-200">
+      <InfoIcon className="h-4 w-4 text-blue-500" />
+      <AlertTitle className="text-blue-500">
+        How Google Drive is used
+      </AlertTitle>
+      <AlertDescription className="text-gray-700">
+        <ol className="list-decimal ml-5 space-y-1">
+          <li>Invoices are uploaded when employees submit expenses</li>
+          <li>Files are initially stored as <strong>Pending</strong></li>
+          <li>
+            Once approved or rejected, invoices are moved to their
+            respective folders
+          </li>
+          <li>Only managers can configure the Drive account</li>
+        </ol>
+      </AlertDescription>
+    </Alert>
 
-          {currentUser?.role !== "manager" && (
-            <Alert className="bg-blue-50 border-blue-200">
-              <AlertTitle>Managed by Admin</AlertTitle>
-              <AlertDescription>
-                Expense invoices are automatically saved to the company Google Drive.
-              </AlertDescription>
-            </Alert>
-          )}
+    {/* FORM */}
+    <form
+      onSubmit={async (e) => {
+        e.preventDefault()
 
-        </CardContent>
-      </Card>
+        await fetch("/api/gdrive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: driveEmail,
+            userRole: currentUser.role,
+            userId: currentUser.user_id,
+          }),
+        })
+
+        toast({ title: "Google Drive saved as default" })
+        setDriveConnected(true)
+      }}
+      className="space-y-4"
+    >
+      <div className="space-y-2">
+        <Label>Google Drive Gmail</Label>
+        <Input
+          type="email"
+          value={driveEmail}
+          onChange={(e) => setDriveEmail(e.target.value)}
+          placeholder="finance.drive@gmail.com"
+          disabled={currentUser?.role !== "manager"}
+        />
+      </div>
+
+      <Button
+        type="submit"
+        className="w-full bg-red-500 hover:bg-red-600 text-white"
+        disabled={currentUser?.role !== "manager"}
+      >
+        {driveConnected
+          ? "Update Google Drive"
+          : "Connect Google Drive"}
+      </Button>
+    </form>
+
+    {/* NON-MANAGER NOTICE */}
+    {currentUser?.role !== "manager" && (
+      <Alert className="bg-gray-50 border-gray-200">
+        <AlertTitle>Managed by Admin</AlertTitle>
+        <AlertDescription>
+          The company Google Drive is configured by management and
+          cannot be changed by employees.
+        </AlertDescription>
+      </Alert>
+    )}
+  </CardContent>
+</Card>
+
+
+
+
+
+
 
 
 
