@@ -41,6 +41,9 @@ export default function SettingsTab() {
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
+  const [driveEmail, setDriveEmail] = useState("")
+  const [driveConnected, setDriveConnected] = useState(false)
+
   const [holidaysUploaded, setHolidaysUploaded] = useState(false)
   const [holidayFile, setHolidayFile] = useState<File | null>(null)
   const [holidayData, setHolidayData] = useState<any[] | null>(null)
@@ -57,12 +60,23 @@ export default function SettingsTab() {
   // Load data on component mount - same as ReminderEmailTab
   useEffect(() => {
     const userStr = sessionStorage.getItem("currentUser") 
+
+    const loadDriveSettings = async () => {
+      const res = await fetch("/api/gdrive", { method: "GET" })
+      const data = await res.json()
+      if (data.email) {
+        setDriveEmail(data.email)
+        setDriveConnected(true)
+      }
+    }
+
     if (userStr) {
       const user = JSON.parse(userStr)
       setCurrentUser(user)
       checkGmailStatus(user.user_id)
       checkCsvStatus(user.user_id)
       checkHolidayStatus(user.user_id)
+      loadDriveSettings()
 
     }
     setIsLoading(false)
@@ -636,6 +650,74 @@ export default function SettingsTab() {
           </form>
         </CardContent>
       </Card>
+
+
+
+      <Card className="bg-white text-gray-800">
+        <CardHeader>
+          <CardTitle>Google Drive (Expense Invoices)</CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${driveConnected ? "bg-green-500" : "bg-red-500"}`} />
+            <span>
+              {driveConnected
+                ? `Default Drive: ${driveEmail}`
+                : "No Drive account configured"}
+            </span>
+          </div>
+
+          {currentUser?.role === "manager" && (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault()
+                await fetch("/api/gdrive", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    email: driveEmail,
+                    userRole: currentUser.role,
+                    userId: currentUser.user_id,
+                  }),
+                })
+                toast({ title: "Google Drive set as default" })
+                setDriveConnected(true)
+                setDriveEmail(driveEmail)
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <Label>Google Drive Gmail</Label>
+                <Input
+                  type="email"
+                  value={driveEmail}
+                  onChange={(e) => setDriveEmail(e.target.value)}
+                  placeholder="finance.drive@gmail.com"
+                />
+              </div>
+
+              <Button className="bg-red-500 text-white">
+                Set as Default Drive
+              </Button>
+            </form>
+          )}
+
+          {currentUser?.role !== "manager" && (
+            <Alert className="bg-blue-50 border-blue-200">
+              <AlertTitle>Managed by Admin</AlertTitle>
+              <AlertDescription>
+                Expense invoices are automatically saved to the company Google Drive.
+              </AlertDescription>
+            </Alert>
+          )}
+
+        </CardContent>
+      </Card>
+
+
+
 
       <Card className="bg-white text-gray-800">
         <CardHeader>

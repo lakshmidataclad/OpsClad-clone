@@ -130,15 +130,34 @@ export default function EmployeeExpenses() {
       const fileExtension = file.name.split(".").pop()
       const path = `${userProfile.employee_id}/${transactionId}.${fileExtension}`
 
-      const { data: upload, error: uploadError } = await supabase.storage
-        .from("expense-invoices")
-        .upload(path, file, { upsert: true })
+      // 1️⃣ get default drive
+      const res = await fetch("/api/gdrive", { method: "GET" })
+      const { email: driveEmail } = await res.json()
 
-      if (uploadError) throw uploadError
+      let invoiceUrl = ""
 
-      const invoiceUrl = supabase.storage
-        .from("expense-invoices")
-        .getPublicUrl(upload.path).data.publicUrl
+      // 2️⃣ upload invoice
+      if (driveEmail) {
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append("employee_id", userProfile.employee_id)
+        formData.append("transaction_id", transactionId)
+
+        const uploadRes = await fetch("/api/upload-expense-to-drive", {
+          method: "POST",
+          body: formData,
+        })
+
+        const uploadData = await uploadRes.json()
+
+        if (!uploadData.success) {
+          throw new Error("Google Drive upload failed")
+        }
+
+        invoiceUrl = uploadData.driveUrl
+      } else {
+        throw new Error("No default Google Drive configured")
+      }
 
       const { error } = await supabase.from("expenses").insert({
         employee_id: userProfile.employee_id,
@@ -268,28 +287,36 @@ export default function EmployeeExpenses() {
             }}
           />
 
-          {previewUrl && (
-            <div className="mt-4 border border-gray-700 rounded-lg p-3 bg-gray-800">
-              <p className="text-sm text-gray-400 mb-2">Preview</p>
+            {previewUrl && (
+              <div className="mt-4 border border-gray-700 rounded-lg p-3 bg-gray-800">
+                <p className="text-sm text-gray-400 mb-2">Preview</p>
 
-              {file?.type.startsWith("image/") && (
-                <img
-                  src={previewUrl}
-                  alt="Invoice preview"
-                  className="max-h-64 rounded-md object-contain mx-auto"
-                />
-              )}
+                {/* IMAGE PREVIEW */}
+                {file?.type.startsWith("image/") && (
+                  <img
+                    src={previewUrl}
+                    alt="Invoice preview"
+                    className="rounded-md mx-auto w-auto max-w-full h-auto"
+                    style={{ maxHeight: "80vh" }}
+                  />
+                )}
 
-              {file?.type === "application/pdf" && (
-                <iframe
-                  src={previewUrl}
-                  className="w-full h-64 rounded-md"
-                  title="PDF Preview"
-                />
-              )}
-            </div>
-          )}
-        </div>
+                {/* PDF PREVIEW */}
+                {file?.type === "application/pdf" && (
+                  <div className="w-full overflow-auto">
+                    <iframe
+                      src={previewUrl}
+                      title="PDF Preview"
+                      className="w-full rounded-md border border-gray-700"
+                      style={{ height: "80vh" }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+
 
         <Button
           onClick={submitExpense}
