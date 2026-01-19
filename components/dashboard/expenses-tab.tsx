@@ -37,6 +37,7 @@ interface Expense {
   transaction_id: string
   request_reason: string
   invoice_url: string
+  google_drive_file_id: string
   status: "pending" | "approved" | "rejected"
 }
 
@@ -81,25 +82,49 @@ export default function ManagerExpensesTracker() {
 
     setProcessing(id)
 
-    const { error } = await supabase
+    /* 1️⃣ Update database first */
+    const { data, error } = await supabase
       .from("expenses")
       .update({
         status,
+        invoice_folder: status, // keeps DB in sync
         approved_at: new Date().toISOString(),
         approved_by: userProfile.email,
       })
       .eq("id", id)
+      .select("google_drive_file_id")
+      .single()
 
-    if (error) {
+    if (error || !data?.google_drive_file_id) {
       toast({
         title: "Failed to update expense",
         variant: "destructive",
       })
-    } else {
-      toast({ title: `Expense ${status}` })
-      loadExpenses()
+      setProcessing(null)
+      return
     }
 
+    /* 2️⃣ Move invoice in Google Drive */
+    try {
+      await fetch("/api/move-expense-invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          fileId: data.google_drive_file_id,
+          targetFolder: status === "approved" ? "Approved" : "Rejected",
+        }),
+      })
+    } catch {
+      toast({
+        title: "Drive update failed",
+        description: "Expense status updated, but file could not be moved.",
+        variant: "destructive",
+      })
+    }
+
+    toast({ title: `Expense ${status}` })
+    loadExpenses()
     setProcessing(null)
   }
 
@@ -148,7 +173,7 @@ export default function ManagerExpensesTracker() {
                 <TableCell>
                   {e.status === "approved" && (
                     <Badge className="bg-green-600">
-                      Approved
+                      Approved (Filed)
                     </Badge>
                   )}
                   {e.status === "pending" && (
@@ -158,7 +183,7 @@ export default function ManagerExpensesTracker() {
                   )}
                   {e.status === "rejected" && (
                     <Badge className="bg-red-600">
-                      Rejected
+                      Rejected (Filed)
                     </Badge>
                   )}
                 </TableCell>
