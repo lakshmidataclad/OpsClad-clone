@@ -62,13 +62,24 @@ export default function SettingsTab() {
     const userStr = sessionStorage.getItem("currentUser") 
 
     const loadDriveSettings = async () => {
-      const res = await fetch("/api/gdrive", { method: "GET" })
-      const data = await res.json()
-      if (data.email) {
-        setDriveEmail(data.email)
-        setDriveConnected(true)
+      try {
+        const res = await fetch("/api/gdrive", {
+          credentials: "include",
+        })
+        const data = await res.json()
+
+        if (data.success && data.email) {
+          setDriveEmail(data.email)
+          setDriveConnected(true)
+        } else {
+          setDriveConnected(false)
+          setDriveEmail("")
+        }
+      } catch {
+        setDriveConnected(false)
       }
     }
+
 
     if (userStr) {
       const user = JSON.parse(userStr)
