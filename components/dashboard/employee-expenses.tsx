@@ -1,12 +1,3 @@
-//submit expense claims by entering currency, amount, expense type, description, and uploading an invoice
-//uploaded to Google Drive and recorded in Supabase with a generated transaction ID
-//It fetches and displays the employee’s past expenses in a table
-
-//api/gdrive
-//-verify the authenticated user’s role server-side and upserting it into the google_drive_settings table.
-//api/upload-expense
-//-handles the POST request to upload an expense invoice to Google Drive
-
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
@@ -67,10 +58,29 @@ export default function EmployeeExpenses() {
   const [type, setType] = useState("")
   const [description, setDescription] = useState("")
   const [file, setFile] = useState<File | null>(null)
-  const [loading, setLoading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  /* ---------------- CURRENCY LIST (Intl) ---------------- */
+  // 🔐 Google Drive readiness
+  const [driveReady, setDriveReady] = useState<boolean | null>(null)
+
+  /* ---------------- CHECK DRIVE CONFIG ---------------- */
+
+  useEffect(() => {
+    const checkDrive = async () => {
+      try {
+        const res = await fetch("/api/gdrive", { credentials: "include" })
+        const data = await res.json()
+        setDriveReady(!!data?.email)
+      } catch {
+        setDriveReady(false)
+      }
+    }
+
+    checkDrive()
+  }, [])
+
+  /* ---------------- CURRENCY LIST ---------------- */
 
   const currencyOptions = useMemo(() => {
     return Intl.supportedValuesOf("currency").map(code => {
@@ -114,20 +124,28 @@ export default function EmployeeExpenses() {
 
   /* ---------------- SUBMIT EXPENSE ---------------- */
 
-    type UploadResponse = {
+  type UploadResponse = {
     success: boolean
     driveUrl: string
     fileId: string
   }
 
-
   const submitExpense = async () => {
     if (!userProfile?.email || !userProfile.employee_id) return
+
+    if (!driveReady) {
+      toast({
+        title: "Google Drive not configured",
+        description: "Please contact your manager to configure Google Drive.",
+        variant: "destructive",
+      })
+      return
+    }
 
     if (!amount || !currency || !type || !file || !description) {
       toast({
         title: "Missing fields",
-        description: "All fields including description are required.",
+        description: "All fields including invoice and description are required.",
         variant: "destructive",
       })
       return
@@ -136,55 +154,35 @@ export default function EmployeeExpenses() {
     setLoading(true)
 
     try {
-      const timestamp = new Date()
-        .toISOString()
-        .replace(/[-:]/g, "")
-        .split(".")[0]
+      // Generate unique transaction ID
+      const now = new Date()
+      const date = now.toISOString().slice(0, 10).replace(/-/g, "") 
+      const time = now.toTimeString().slice(0, 8).replace(/:/g, "") 
+      const transactionId = `REM${date}${time}${userProfile.employee_id}`
 
-      const transactionId = `REM-${userProfile.employee_id}-${timestamp}`
+      // 1️⃣ Upload invoice to Drive
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("transaction_id", transactionId)
 
-      const fileExtension = file.name.split(".").pop()
-      const path = `${userProfile.employee_id}/${transactionId}.${fileExtension}`
+      const uploadRes = await fetch("/api/upload-expense", {
+        method: "POST",
+        body: formData,
+      })
 
-      // 1️⃣ get default drive
-      const res = await fetch("/api/gdrive", { method: "GET" })
-      const { email: driveEmail } = await res.json()
+      const uploadData = (await uploadRes.json()) as UploadResponse
 
-      let invoiceUrl = ""
-      let uploadData: UploadResponse | null = null
-
-      // 2️⃣ upload invoice
-      if (driveEmail) {
-        const formData = new FormData()
-        formData.append("file", file)
-        formData.append("employee_id", userProfile.employee_id)
-        formData.append("transaction_id", transactionId)
-
-        const uploadRes = await fetch("/api/upload-expense", {
-          method: "POST",
-          body: formData,
-        })
-
-        uploadData = (await uploadRes.json()) as UploadResponse
-
-        if (!uploadData.success) {
-          throw new Error("Google Drive upload failed")
-        }
-
-        invoiceUrl = uploadData.driveUrl
+      if (!uploadData.success) {
+        throw new Error("Invoice upload failed")
       }
 
-
-      if (!uploadData) {
-        throw new Error("Invoice upload missing")
-      }
-
+      // 2️⃣ Insert expense record
       const { error } = await supabase.from("expenses").insert({
         employee_id: userProfile.employee_id,
         employee_name: userProfile.username,
         sender_email: userProfile.email,
         amount: Number(amount),
-        currency: currency,
+        currency,
         reimbursement_type: type,
         transaction_id: transactionId,
         invoice_url: uploadData.driveUrl,
@@ -207,9 +205,12 @@ export default function EmployeeExpenses() {
 
       loadExpenses(userProfile.email)
 
-    } catch {
+    } catch (err) {
+      console.error(err)
       toast({
         title: "Submission failed",
+        description:
+          err instanceof Error ? err.message : "Unexpected error occurred.",
         variant: "destructive",
       })
     } finally {
@@ -232,7 +233,13 @@ export default function EmployeeExpenses() {
 
       <CardContent className="space-y-6">
 
-        {/* INPUT ROW */}
+        {driveReady === false && (
+          <p className="text-sm text-red-400">
+            Google Drive is not configured. Please contact your manager.
+          </p>
+        )}
+
+        {/* INPUTS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label>Currency</Label>
@@ -250,13 +257,9 @@ export default function EmployeeExpenses() {
             </Select>
           </div>
 
-                    <div>
+          <div>
             <Label>Amount</Label>
-            <Input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
+            <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} />
           </div>
 
           <div>
@@ -270,79 +273,35 @@ export default function EmployeeExpenses() {
                 <SelectItem value="meals">Meals</SelectItem>
                 <SelectItem value="office">Office Supplies</SelectItem>
                 <SelectItem value="client">Client Expense</SelectItem>
-                <SelectItem value="professional">
-                  Professional Development
-                </SelectItem>
+                <SelectItem value="professional">Professional Development</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        {/* DESCRIPTION */}
         <div>
           <Label>Description</Label>
           <Textarea
             rows={3}
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Explain the expense in detail"
-            className="resize-y"
+            onChange={e => setDescription(e.target.value)}
             maxLength={500}
           />
         </div>
 
-        {/* INVOICE */}
-        <div>
-          <Input
-            type="file"
-            accept="image/*,.pdf"
-            onChange={(e) => {
-              const selectedFile = e.target.files?.[0] || null
-              setFile(selectedFile)
-
-              if (selectedFile) {
-                const url = URL.createObjectURL(selectedFile)
-                setPreviewUrl(url)
-              } else {
-                setPreviewUrl(null)
-              }
-            }}
-          />
-
-            {previewUrl && (
-              <div className="mt-4 border border-gray-700 rounded-lg p-3 bg-gray-800">
-                <p className="text-sm text-gray-400 mb-2">Preview</p>
-
-                {/* IMAGE PREVIEW */}
-                {file?.type.startsWith("image/") && (
-                  <img
-                    src={previewUrl}
-                    alt="Invoice preview"
-                    className="rounded-md mx-auto w-auto max-w-full h-auto"
-                    style={{ maxHeight: "80vh" }}
-                  />
-                )}
-
-                {/* PDF PREVIEW */}
-                {file?.type === "application/pdf" && (
-                  <div className="w-full overflow-auto">
-                    <iframe
-                      src={previewUrl}
-                      title="PDF Preview"
-                      className="w-full rounded-md border border-gray-700"
-                      style={{ height: "80vh" }}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-
+        <Input
+          type="file"
+          accept="image/*,.pdf"
+          onChange={e => {
+            const f = e.target.files?.[0] || null
+            setFile(f)
+            setPreviewUrl(f ? URL.createObjectURL(f) : null)
+          }}
+        />
 
         <Button
           onClick={submitExpense}
-          disabled={loading}
+          disabled={loading || driveReady === false}
           className="bg-orange-600 hover:bg-orange-700"
         >
           {loading ? <Loader2 className="animate-spin" /> : "Submit Expense"}
@@ -363,34 +322,22 @@ export default function EmployeeExpenses() {
           <TableBody>
             {expenses.map(e => (
               <TableRow key={e.id}>
-                <TableCell className="text-xs">
-                  {e.transaction_id}
-                </TableCell>
+                <TableCell className="text-xs">{e.transaction_id}</TableCell>
                 <TableCell>{e.amount}</TableCell>
                 <TableCell>{e.reimbursement_type}</TableCell>
                 <TableCell>
                   {e.status === "approved" && (
-                    <Badge className="bg-green-600 flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" /> Approved
-                    </Badge>
+                    <Badge className="bg-green-600"><CheckCircle className="w-3 h-3" /> Approved</Badge>
                   )}
                   {e.status === "pending" && (
-                    <Badge className="bg-yellow-600 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Pending
-                    </Badge>
+                    <Badge className="bg-yellow-600"><Clock className="w-3 h-3" /> Pending</Badge>
                   )}
                   {e.status === "rejected" && (
-                    <Badge className="bg-red-600 flex items-center gap-1">
-                      <XCircle className="w-3 h-3" /> Rejected
-                    </Badge>
+                    <Badge className="bg-red-600"><XCircle className="w-3 h-3" /> Rejected</Badge>
                   )}
                 </TableCell>
                 <TableCell>
-                  <a
-                    href={e.invoice_url}
-                    target="_blank"
-                    className="text-blue-400 underline"
-                  >
+                  <a href={e.invoice_url} target="_blank" className="text-blue-400 underline">
                     View
                   </a>
                 </TableCell>
@@ -399,10 +346,7 @@ export default function EmployeeExpenses() {
 
             {expenses.length === 0 && (
               <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="text-center text-gray-400 py-6"
-                >
+                <TableCell colSpan={5} className="text-center text-gray-400 py-6">
                   No expenses submitted yet
                 </TableCell>
               </TableRow>
