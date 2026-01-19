@@ -1,3 +1,12 @@
+//submit expense claims by entering currency, amount, expense type, description, and uploading an invoice
+//uploaded to Google Drive and recorded in Supabase with a generated transaction ID
+//It fetches and displays the employee’s past expenses in a table
+
+//api/gdrive
+//-verify the authenticated user’s role server-side and upserting it into the google_drive_settings table.
+//api/upload-expense
+//-handles the POST request to upload an expense invoice to Google Drive
+
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
@@ -37,7 +46,7 @@ import { useToast } from "@/hooks/use-toast"
 
 interface Expense {
   id: string
-  amount: string
+  amount: number
   reimbursement_type: string
   transaction_id: string
   invoice_url: string
@@ -151,7 +160,7 @@ export default function EmployeeExpenses() {
         formData.append("employee_id", userProfile.employee_id)
         formData.append("transaction_id", transactionId)
 
-        const uploadRes = await fetch("/api/upload-expense-to-drive", {
+        const uploadRes = await fetch("/api/upload-expense", {
           method: "POST",
           body: formData,
         })

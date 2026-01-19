@@ -1,3 +1,22 @@
+from flask import Blueprint, request, jsonify, session
+
+import os
+gdrive_blueprint = Blueprint("gdrive", __name__)
+def get_or_create_output_folder(service):
+    query = "name='OpsClad Expenses' and mimeType='application/vnd.google-apps.folder'"
+    res = service.files().list(q=query, fields="files(id)").execute()
+    if res["files"]:
+        return res["files"][0]["id"]
+    else:
+        folder = service.files().create(
+            body={
+                "name": "OpsClad Expenses",
+                "mimeType": "application/vnd.google-apps.folder",
+            },
+            fields="id",
+        ).execute()
+        return folder["id"]
+
 @gdrive_blueprint.route("/upload-expense", methods=["POST"])
 def upload_expense():
     if "destination_credentials" not in session:
