@@ -72,12 +72,19 @@ export default function SettingsTab() {
 
     if (userStr) {
       const user = JSON.parse(userStr)
-      setCurrentUser(user)
+
+      // 🔴 PATCH: normalize role key
+      const normalizedUser = {
+        ...user,
+        role: user.role || user.user_role || user.userRole || null,
+      }
+
+      setCurrentUser(normalizedUser)
+
       checkGmailStatus(user.user_id)
       checkCsvStatus(user.user_id)
       checkHolidayStatus(user.user_id)
       loadDriveSettings()
-
     }
     setIsLoading(false)
   }, [])
@@ -672,7 +679,7 @@ export default function SettingsTab() {
         {driveConnected ? (
           <span className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-green-500" />
-            Connected to {driveEmail}
+            Invoices will be uploaded to Drive owned by {driveEmail}
           </span>
         ) : (
           "Not connected"
@@ -713,6 +720,10 @@ export default function SettingsTab() {
       </AlertDescription>
     </Alert>
 
+<p className="text-xs text-gray-400">
+  Detected role: {currentUser?.role ?? "undefined"}
+</p>
+
     {/* FORM */}
     <form
       onSubmit={async (e) => {
@@ -721,10 +732,9 @@ export default function SettingsTab() {
         await fetch("/api/gdrive", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             email: driveEmail,
-            userRole: currentUser.role,
-            userId: currentUser.user_id,
           }),
         })
 
@@ -740,36 +750,22 @@ export default function SettingsTab() {
           value={driveEmail}
           onChange={(e) => setDriveEmail(e.target.value)}
           placeholder="finance.drive@gmail.com"
-          disabled={currentUser?.role !== "manager"}
+          disabled={isLoading || currentUser?.role !== "manager"}
         />
       </div>
 
       <Button
         type="submit"
         className="w-full bg-red-500 hover:bg-red-600 text-white"
-        disabled={currentUser?.role !== "manager"}
+        disabled={isLoading || currentUser?.role !== "manager"}
       >
         {driveConnected
           ? "Update Google Drive"
           : "Connect Google Drive"}
       </Button>
     </form>
-
-    {/* NON-MANAGER NOTICE */}
-    {currentUser?.role !== "manager" && (
-      <Alert className="bg-gray-50 border-gray-200">
-        <AlertTitle>Managed by Admin</AlertTitle>
-        <AlertDescription>
-          The company Google Drive is configured by management and
-          cannot be changed by employees.
-        </AlertDescription>
-      </Alert>
-    )}
   </CardContent>
 </Card>
-
-
-
 
 
 
