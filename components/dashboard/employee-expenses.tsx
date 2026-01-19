@@ -105,6 +105,13 @@ export default function EmployeeExpenses() {
 
   /* ---------------- SUBMIT EXPENSE ---------------- */
 
+    type UploadResponse = {
+    success: boolean
+    driveUrl: string
+    fileId: string
+  }
+
+
   const submitExpense = async () => {
     if (!userProfile?.email || !userProfile.employee_id) return
 
@@ -135,6 +142,7 @@ export default function EmployeeExpenses() {
       const { email: driveEmail } = await res.json()
 
       let invoiceUrl = ""
+      let uploadData: UploadResponse | null = null
 
       // 2️⃣ upload invoice
       if (driveEmail) {
@@ -148,15 +156,18 @@ export default function EmployeeExpenses() {
           body: formData,
         })
 
-        const uploadData = await uploadRes.json()
+        uploadData = (await uploadRes.json()) as UploadResponse
 
         if (!uploadData.success) {
           throw new Error("Google Drive upload failed")
         }
 
         invoiceUrl = uploadData.driveUrl
-      } else {
-        throw new Error("No default Google Drive configured")
+      }
+
+
+      if (!uploadData) {
+        throw new Error("Invoice upload missing")
       }
 
       const { error } = await supabase.from("expenses").insert({
@@ -167,7 +178,9 @@ export default function EmployeeExpenses() {
         currency: currency,
         reimbursement_type: type,
         transaction_id: transactionId,
-        invoice_url: invoiceUrl,
+        invoice_url: uploadData.driveUrl,
+        google_drive_file_id: uploadData.fileId,
+        invoice_folder: "pending",
         request_reason: description,
         status: "pending",
       })
