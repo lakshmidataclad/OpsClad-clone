@@ -3,19 +3,6 @@ import crypto from "crypto"
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive"
 const TOKEN_URL = "https://oauth2.googleapis.com/token"
 
-/* -------------------------------------------------------
-   ENV GUARD — FAIL FAST IF MISCONFIGURED
--------------------------------------------------------- */
-if (
-  !process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ||
-  !process.env.GOOGLE_PRIVATE_KEY ||
-  !process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID
-) {
-  throw new Error(
-    "Google Drive env vars missing. Check GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, GOOGLE_DRIVE_ROOT_FOLDER_ID"
-  )
-}
-
 function base64url(input: Buffer | string) {
   return Buffer.from(input)
     .toString("base64")
@@ -24,9 +11,25 @@ function base64url(input: Buffer | string) {
     .replace(/\//g, "_")
 }
 
+function assertDriveEnv() {
+  if (
+    !process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ||
+    !process.env.GOOGLE_PRIVATE_KEY ||
+    !process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID
+  ) {
+    throw new Error(
+      "Google Drive env vars missing. Check GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, GOOGLE_DRIVE_ROOT_FOLDER_ID"
+    )
+  }
+}
+
 let cachedToken: { token: string; exp: number } | null = null
 
 export async function getDriveAccessToken() {
+  // ✅ validate env at runtime (NOT build time)
+  assertDriveEnv()
+
+  // reuse cached token if valid
   if (cachedToken && cachedToken.exp > Date.now()) {
     return cachedToken.token
   }
@@ -73,7 +76,7 @@ export async function getDriveAccessToken() {
 
   cachedToken = {
     token: data.access_token,
-    exp: Date.now() + (data.expires_in - 300) * 1000,
+    exp: Date.now() + (data.expires_in - 300) * 1000, // refresh 5 mins early
   }
 
   return data.access_token
