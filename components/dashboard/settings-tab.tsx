@@ -61,12 +61,6 @@ export default function SettingsTab() {
   useEffect(() => {
     const userStr = sessionStorage.getItem("currentUser")
 
-    const checkRole = async () => {
-      const res = await fetch("/api/me", { credentials: "include" })
-      const data = await res.json()
-      setIsManager(data.role === "manager")
-    }
-
     const loadDriveSettings = async () => {
       try {
         const res = await fetch("/api/gdrive", { credentials: "include" })
@@ -93,7 +87,6 @@ export default function SettingsTab() {
       checkHolidayStatus(user.user_id)
     }
 
-    checkRole()
     loadDriveSettings()
     setIsLoading(false)
   }, [])
