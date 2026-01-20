@@ -52,20 +52,24 @@ export default function SettingsTab() {
   const [isDraggingHoliday, setIsDraggingHoliday] = useState(false)
   const currentYear = new Date().getFullYear()
   const [selectedYear, setSelectedYear] = useState(currentYear)
-  const filteredHolidays = holidayData?.filter(h =>
-    new Date(h.holiday_date).getFullYear() === selectedYear
-  )
+
+  const [isManager, setIsManager] = useState(false)
+
 
 
   // Load data on component mount - same as ReminderEmailTab
   useEffect(() => {
-    const userStr = sessionStorage.getItem("currentUser") 
+    const userStr = sessionStorage.getItem("currentUser")
+
+    const checkRole = async () => {
+      const res = await fetch("/api/me", { credentials: "include" })
+      const data = await res.json()
+      setIsManager(data.role === "manager")
+    }
 
     const loadDriveSettings = async () => {
       try {
-        const res = await fetch("/api/gdrive", {
-          credentials: "include",
-        })
+        const res = await fetch("/api/gdrive", { credentials: "include" })
         const data = await res.json()
 
         if (data.success && data.email) {
@@ -80,25 +84,20 @@ export default function SettingsTab() {
       }
     }
 
-
     if (userStr) {
       const user = JSON.parse(userStr)
-
-      // 🔴 PATCH: normalize role key
-      const normalizedUser = {
-        ...user,
-        role: user.role || user.user_role || user.userRole || null,
-      }
-
-      setCurrentUser(normalizedUser)
+      setCurrentUser(user)
 
       checkGmailStatus(user.user_id)
-      checkCsvStatus(user.user_id)
+      checkCsvStatus()
       checkHolidayStatus(user.user_id)
-      loadDriveSettings()
     }
+
+    checkRole()
+    loadDriveSettings()
     setIsLoading(false)
   }, [])
+
 
   const checkGmailStatus = async (userId: string) => {
     try {
@@ -114,7 +113,7 @@ export default function SettingsTab() {
     }
   }
 
-  const checkCsvStatus = async (userId: string) => {
+  const checkCsvStatus = async () => {
     try {
       const csvResponse = await fetch("/api/csv-status")
       const csvData = await csvResponse.json()
@@ -731,10 +730,6 @@ export default function SettingsTab() {
       </AlertDescription>
     </Alert>
 
-<p className="text-xs text-gray-400">
-  Detected role: {currentUser?.role ?? "undefined"}
-</p>
-
     {/* FORM */}
     <form
       onSubmit={async (e) => {
@@ -761,14 +756,14 @@ export default function SettingsTab() {
           value={driveEmail}
           onChange={(e) => setDriveEmail(e.target.value)}
           placeholder="finance.drive@gmail.com"
-          disabled={isLoading || currentUser?.role !== "manager"}
+          disabled={isLoading || !currentUser}
         />
       </div>
 
       <Button
         type="submit"
         className="w-full bg-red-500 hover:bg-red-600 text-white"
-        disabled={isLoading || currentUser?.role !== "manager"}
+        disabled={isLoading || !isManager}
       >
         {driveConnected
           ? "Update Google Drive"
@@ -836,7 +831,7 @@ export default function SettingsTab() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {csvData.map((employee, employeeIndex) =>
+                            {csvData.map((employee) =>
                               employee.projects.map((project: any, projectIndex: number) => (
                                 <TableRow key={`${employee.employee_id}-${projectIndex}`}>
                                   <TableCell className="text-gray-600">
@@ -1013,7 +1008,9 @@ export default function SettingsTab() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {holidayData.map((h, i) => (
+                            {holidayData
+                              .filter(h => new Date(h.holiday_date).getFullYear() === selectedYear)
+                              .map((h, i) => (
                               <TableRow key={i}>
                                 <TableCell>{h.holiday}</TableCell>
                                 <TableCell>{h.holiday_date}</TableCell>
