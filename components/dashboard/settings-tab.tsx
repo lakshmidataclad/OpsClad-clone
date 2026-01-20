@@ -759,7 +759,9 @@ export default function SettingsTab() {
           disabled={isLoading || !currentUser}
         />
       </div>
-
+      <p className="text-xs text-gray-400">
+        isManager: {String(isManager)}
+      </p>
       <Button
         type="submit"
         className="w-full bg-red-500 hover:bg-red-600 text-white"
