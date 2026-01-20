@@ -53,7 +53,7 @@ export default function SettingsTab() {
   const currentYear = new Date().getFullYear()
   const [selectedYear, setSelectedYear] = useState(currentYear)
 
-  const [isManager, setIsManager] = useState(false)
+  const [isManager, setIsManager] = useState(true)
 
 
 
