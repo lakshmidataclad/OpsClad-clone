@@ -735,7 +735,16 @@ export default function SettingsTab() {
       onSubmit={async (e) => {
         e.preventDefault()
 
-        await fetch("/api/gdrive", {
+        if (!driveEmail.trim()) {
+          toast({
+            title: "Google Drive email required",
+            description: "Please enter a valid Google Drive Gmail address.",
+            variant: "destructive",
+          })
+          return
+        }
+
+        const res = await fetch("/api/gdrive", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -744,19 +753,30 @@ export default function SettingsTab() {
           }),
         })
 
+        if (!res.ok) {
+          toast({
+            title: "Permission denied",
+            description: "Only managers can configure Google Drive.",
+            variant: "destructive",
+          })
+          return
+        }
+
         toast({ title: "Google Drive saved as default" })
         setDriveConnected(true)
       }}
       className="space-y-4"
     >
+
       <div className="space-y-2">
         <Label>Google Drive Gmail</Label>
         <Input
           type="email"
           value={driveEmail}
           onChange={(e) => setDriveEmail(e.target.value)}
-          placeholder="finance.drive@gmail.com"
+          placeholder={driveEmail || "finance.drive@gmail.com"}
           disabled={isLoading || !currentUser}
+          className="bg-gray-900 text-white placeholder-gray-400"
         />
       </div>
       <p className="text-xs text-gray-400">
@@ -765,11 +785,9 @@ export default function SettingsTab() {
       <Button
         type="submit"
         className="w-full bg-red-500 hover:bg-red-600 text-white"
-        disabled={isLoading || !isManager}
+        disabled={isLoading}
       >
-        {driveConnected
-          ? "Update Google Drive"
-          : "Connect Google Drive"}
+        {driveConnected ? "Update Google Drive" : "Connect Google Drive"}
       </Button>
     </form>
   </CardContent>
