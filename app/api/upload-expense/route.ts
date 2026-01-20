@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server"
 import crypto from "crypto"
 import { getDriveAccessToken } from "@/lib/google-drive"
+import { supabase } from "@/lib/supabase"
 
 /* -------------------------------------------------------
    Constants
 -------------------------------------------------------- */
 const DRIVE_UPLOAD_URL =
   "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
+
 const DRIVE_FILES_URL =
   "https://www.googleapis.com/drive/v3/files"
 
@@ -15,6 +17,9 @@ const DRIVE_FILES_URL =
 -------------------------------------------------------- */
 export async function POST(req: Request) {
   try {
+    /* ---------------------------------------------------
+       Parse form data
+    --------------------------------------------------- */
     const formData = await req.formData()
 
     const file = formData.get("file") as File | null
@@ -22,21 +27,50 @@ export async function POST(req: Request) {
 
     if (!file || !transactionId) {
       return NextResponse.json(
-        { success: false, message: "Missing fields" },
+        { success: false, message: "Missing file or transaction ID" },
         { status: 400 }
       )
     }
 
-    const accessToken = await getDriveAccessToken()
-    const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID!
+    /* ---------------------------------------------------
+       Load Google Drive config (schema-aligned)
+    --------------------------------------------------- */
+    const { data: driveConfig, error: driveError } = await supabase
+      .from("google_drive_settings")
+      .select("connected_email")
+      .eq("is_default", true)
+      .single()
+
+    if (driveError || !driveConfig) {
+      return NextResponse.json(
+        { success: false, message: "Google Drive not configured" },
+        { status: 400 }
+      )
+    }
 
     /* ---------------------------------------------------
-       Ensure Pending folder exists
+       Auth + root folder
+    --------------------------------------------------- */
+    const accessToken = await getDriveAccessToken()
+
+    const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID
+    if (!rootFolderId) {
+      throw new Error("GOOGLE_DRIVE_ROOT_FOLDER_ID missing")
+    }
+
+    /* ---------------------------------------------------
+       Ensure 'Pending' folder exists
     --------------------------------------------------- */
     const searchRes = await fetch(
-      `${DRIVE_FILES_URL}?q=name='Pending' and mimeType='application/vnd.google-apps.folder' and '${rootFolderId}' in parents and trashed=false&fields=files(id)`,
+      `${DRIVE_FILES_URL}?q=` +
+        encodeURIComponent(
+          `name='Pending' and mimeType='application/vnd.google-apps.folder' and '${rootFolderId}' in parents and trashed=false`
+        ) +
+        `&fields=files(id)`,
       {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       }
     )
 
@@ -57,8 +91,8 @@ export async function POST(req: Request) {
         }),
       })
 
-      const folder = await createFolderRes.json()
-      pendingFolderId = folder.id
+      const folderData = await createFolderRes.json()
+      pendingFolderId = folderData.id
     }
 
     /* ---------------------------------------------------
@@ -75,10 +109,13 @@ export async function POST(req: Request) {
 
     const multipartBody = Buffer.concat([
       Buffer.from(
-        `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`
+        `--${boundary}\r\n` +
+          `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+          `${JSON.stringify(metadata)}\r\n`
       ),
       Buffer.from(
-        `--${boundary}\r\nContent-Type: ${file.type}\r\n\r\n`
+        `--${boundary}\r\n` +
+          `Content-Type: ${file.type}\r\n\r\n`
       ),
       fileBuffer,
       Buffer.from(`\r\n--${boundary}--`),
@@ -99,11 +136,14 @@ export async function POST(req: Request) {
     if (!uploadRes.ok) {
       console.error("Drive upload failed:", uploadData)
       return NextResponse.json(
-        { success: false, message: uploadData.error || "Drive upload failed" },
+        { success: false, message: "Google Drive upload failed" },
         { status: 500 }
       )
     }
 
+    /* ---------------------------------------------------
+       Success
+    --------------------------------------------------- */
     const fileId = uploadData.id
     const driveUrl = `https://drive.google.com/file/d/${fileId}/view`
 
@@ -111,8 +151,8 @@ export async function POST(req: Request) {
       success: true,
       fileId,
       driveUrl,
+      connectedEmail: driveConfig.connected_email,
     })
-
   } catch (err) {
     console.error("Upload error:", err)
     return NextResponse.json(
