@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       .from("google_drive_settings")
       .select("connected_email")
       .eq("is_default", true)
-      .single()
+      .maybeSingle()
 
     if (driveError || !driveConfig) {
       return NextResponse.json(
