@@ -816,14 +816,12 @@ const sendSocialMessage = async () => {
     .from("profiles")
     .select("employee_id, username")
     .eq("id", user.id)
-    .single()
-
+    .maybeSingle()
   const { data: roleRow } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", user.id)
-    .single()
-
+    .maybeSingle()
   let displayName = profile?.username || "DATACLAD"
 
   if (roleRow?.role === "employee" && profile?.employee_id) {
@@ -831,8 +829,7 @@ const sendSocialMessage = async () => {
       .from("employees")
       .select("name")
       .eq("employee_id", profile.employee_id)
-      .single()
-
+      .maybeSingle()
     if (employee?.name) {
       displayName = employee.name
     }

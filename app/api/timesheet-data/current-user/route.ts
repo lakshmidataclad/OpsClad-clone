@@ -20,8 +20,7 @@ export async function GET(req: Request) {
     .from("profiles")
     .select("employee_id, user_id")
     .eq("user_id", user.id)
-    .single()
-
+    .maybeSingle()
   if (profileError || !profile) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 })
   }
