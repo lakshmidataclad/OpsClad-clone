@@ -58,10 +58,9 @@ export default function EmployeeExpenses() {
   const [type, setType] = useState("")
   const [description, setDescription] = useState("")
   const [file, setFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // 🔐 Google Drive readiness
+  // Google Drive readiness (shared / global)
   const [driveReady, setDriveReady] = useState<boolean | null>(null)
 
   /* ---------------- CHECK DRIVE CONFIG ---------------- */
@@ -136,7 +135,8 @@ export default function EmployeeExpenses() {
     if (!driveReady) {
       toast({
         title: "Google Drive not configured",
-        description: "Please contact your manager to configure Google Drive.",
+        description:
+          "Expense uploads are unavailable until a company Drive is configured.",
         variant: "destructive",
       })
       return
@@ -154,13 +154,12 @@ export default function EmployeeExpenses() {
     setLoading(true)
 
     try {
-      // Generate unique transaction ID
       const now = new Date()
-      const date = now.toISOString().slice(0, 10).replace(/-/g, "") 
-      const time = now.toTimeString().slice(0, 8).replace(/:/g, "") 
+      const date = now.toISOString().slice(0, 10).replace(/-/g, "")
+      const time = now.toTimeString().slice(0, 8).replace(/:/g, "")
       const transactionId = `REM${date}${time}${userProfile.employee_id}`
 
-      // 1️⃣ Upload invoice to Drive
+      // Upload invoice
       const formData = new FormData()
       formData.append("file", file)
       formData.append("transaction_id", transactionId)
@@ -176,7 +175,7 @@ export default function EmployeeExpenses() {
         throw new Error("Invoice upload failed")
       }
 
-      // 2️⃣ Insert expense record
+      // Insert expense record
       const { error } = await supabase.from("expenses").insert({
         employee_id: userProfile.employee_id,
         employee_name: userProfile.username,
@@ -201,10 +200,8 @@ export default function EmployeeExpenses() {
       setType("")
       setDescription("")
       setFile(null)
-      setPreviewUrl(null)
 
       loadExpenses(userProfile.email)
-
     } catch (err) {
       console.error(err)
       toast({
@@ -232,10 +229,10 @@ export default function EmployeeExpenses() {
       </CardHeader>
 
       <CardContent className="space-y-6">
-
         {driveReady === false && (
           <p className="text-sm text-red-400">
-            Google Drive is not configured. Please contact your manager.
+            Google Drive is not configured. Expense submissions are currently
+            unavailable.
           </p>
         )}
 
@@ -259,7 +256,11 @@ export default function EmployeeExpenses() {
 
           <div>
             <Label>Amount</Label>
-            <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} />
+            <Input
+              type="number"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+            />
           </div>
 
           <div>
@@ -273,7 +274,9 @@ export default function EmployeeExpenses() {
                 <SelectItem value="meals">Meals</SelectItem>
                 <SelectItem value="office">Office Supplies</SelectItem>
                 <SelectItem value="client">Client Expense</SelectItem>
-                <SelectItem value="professional">Professional Development</SelectItem>
+                <SelectItem value="professional">
+                  Professional Development
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -292,11 +295,7 @@ export default function EmployeeExpenses() {
         <Input
           type="file"
           accept="image/*,.pdf"
-          onChange={e => {
-            const f = e.target.files?.[0] || null
-            setFile(f)
-            setPreviewUrl(f ? URL.createObjectURL(f) : null)
-          }}
+          onChange={e => setFile(e.target.files?.[0] || null)}
         />
 
         <Button
@@ -322,22 +321,34 @@ export default function EmployeeExpenses() {
           <TableBody>
             {expenses.map(e => (
               <TableRow key={e.id}>
-                <TableCell className="text-xs">{e.transaction_id}</TableCell>
+                <TableCell className="text-xs">
+                  {e.transaction_id}
+                </TableCell>
                 <TableCell>{e.amount}</TableCell>
                 <TableCell>{e.reimbursement_type}</TableCell>
                 <TableCell>
                   {e.status === "approved" && (
-                    <Badge className="bg-green-600"><CheckCircle className="w-3 h-3" /> Approved</Badge>
+                    <Badge className="bg-green-600">
+                      <CheckCircle className="w-3 h-3" /> Approved
+                    </Badge>
                   )}
                   {e.status === "pending" && (
-                    <Badge className="bg-yellow-600"><Clock className="w-3 h-3" /> Pending</Badge>
+                    <Badge className="bg-yellow-600">
+                      <Clock className="w-3 h-3" /> Pending
+                    </Badge>
                   )}
                   {e.status === "rejected" && (
-                    <Badge className="bg-red-600"><XCircle className="w-3 h-3" /> Rejected</Badge>
+                    <Badge className="bg-red-600">
+                      <XCircle className="w-3 h-3" /> Rejected
+                    </Badge>
                   )}
                 </TableCell>
                 <TableCell>
-                  <a href={e.invoice_url} target="_blank" className="text-blue-400 underline">
+                  <a
+                    href={e.invoice_url}
+                    target="_blank"
+                    className="text-blue-400 underline"
+                  >
                     View
                   </a>
                 </TableCell>
@@ -346,14 +357,16 @@ export default function EmployeeExpenses() {
 
             {expenses.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-gray-400 py-6">
+                <TableCell
+                  colSpan={5}
+                  className="text-center text-gray-400 py-6"
+                >
                   No expenses submitted yet
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
-
       </CardContent>
     </Card>
   )

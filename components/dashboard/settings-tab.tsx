@@ -53,16 +53,6 @@ export default function SettingsTab() {
   const currentYear = new Date().getFullYear()
   const [selectedYear, setSelectedYear] = useState(currentYear)
 
-  const [isManager, setIsManager] = useState(true)
-
-
-  useEffect(() => {
-    if (currentUser?.role === "manager") {
-      setIsManager(true)
-    } else {
-      setIsManager(false)
-    }
-  }, [currentUser])
 
 
   // Load data on component mount - same as ReminderEmailTab
@@ -726,7 +716,7 @@ export default function SettingsTab() {
             Once approved or rejected, invoices are moved to their
             respective folders
           </li>
-          <li>Only managers can configure the Drive account</li>
+          <li>The latest saved Drive becomes the active company Drive</li>
         </ol>
       </AlertDescription>
     </Alert>
@@ -756,8 +746,8 @@ export default function SettingsTab() {
 
         if (!res.ok) {
           toast({
-            title: "Permission denied",
-            description: "Only managers can configure Google Drive.",
+            title: "Failed to save Google Drive",
+            description: "Please try again.",
             variant: "destructive",
           })
           return
@@ -776,17 +766,15 @@ export default function SettingsTab() {
           value={driveEmail}
           onChange={(e) => setDriveEmail(e.target.value)}
           placeholder={driveEmail || "finance.drive@gmail.com"}
-          disabled={!isManager}
           className="bg-gray-900 text-white placeholder-gray-400"
+          disabled={isLoading}
         />
       </div>
-      <p className="text-xs text-gray-400">
-        isManager: {String(isManager)}
-      </p>
       <Button
         type="submit"
         className="w-full bg-red-500 hover:bg-red-600 text-white"
-        disabled={!isManager || isLoading}
+        disabled={isLoading}
+
       >
         {driveConnected ? "Update Google Drive" : "Connect Google Drive"}
       </Button>

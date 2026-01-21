@@ -17,12 +17,12 @@ const DRIVE_FILES_URL =
 const MAX_FILE_SIZE_MB = 10
 
 /* -------------------------------------------------------
-   POST — Upload expense invoice
+   POST — Upload expense invoice (shared Drive)
 -------------------------------------------------------- */
 export async function POST(req: Request) {
   try {
     /* ---------------------------------------------------
-       AUTH — must be logged in
+       AUTH — must be logged in (no role checks)
     --------------------------------------------------- */
     const supabaseAuth = createRouteHandlerClient({ cookies })
     const {
@@ -59,7 +59,8 @@ export async function POST(req: Request) {
     }
 
     /* ---------------------------------------------------
-       Load active Google Drive configuration
+       Load ACTIVE (default) Google Drive config
+       Shared / global, latest wins
     --------------------------------------------------- */
     const { data: driveConfig, error: driveError } = await supabase
       .from("google_drive_settings")

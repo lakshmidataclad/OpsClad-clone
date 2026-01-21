@@ -4,40 +4,12 @@ import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { supabase } from "@/lib/supabase"
 
 /* -------------------------------------------------------
-   Helper — ensure user is authenticated & manager
--------------------------------------------------------- */
-async function requireManager() {
-  const supabaseAuth = createRouteHandlerClient({ cookies })
-
-  const {
-    data: { user },
-  } = await supabaseAuth.auth.getUser()
-
-  if (!user) {
-    throw new Error("UNAUTHORIZED")
-  }
-
-  const { data: role, error } = await supabase
-    .from("user_roles")
-    .select("role, is_active")
-    .eq("user_id", user.id)
-    .single()
-
-  if (error || !role || !role.is_active || role.role !== "manager") {
-    throw new Error("FORBIDDEN")
-  }
-
-  return user
-}
-
-/* -------------------------------------------------------
-   GET — Fetch active Google Drive configuration
-   Used by Expenses UI
+   GET — Fetch active (default) Google Drive configuration
+   Used by Expenses UI & upload logic
 -------------------------------------------------------- */
 export async function GET() {
   try {
     const supabaseAuth = createRouteHandlerClient({ cookies })
-
     const {
       data: { user },
     } = await supabaseAuth.auth.getUser()
@@ -51,7 +23,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from("google_drive_settings")
-      .select("connected_email, created_at")
+      .select("connected_email, created_at, created_by")
       .eq("is_default", true)
       .maybeSingle()
 
@@ -67,6 +39,7 @@ export async function GET() {
       connected: !!data,
       email: data?.connected_email ?? null,
       connectedAt: data?.created_at ?? null,
+      createdBy: data?.created_by ?? null,
     })
   } catch (err) {
     console.error("GET /api/gdrive error:", err)
@@ -79,7 +52,7 @@ export async function GET() {
 
 /* -------------------------------------------------------
    POST — Set / Change Google Drive configuration
-   Manager-only
+   Shared (global), latest wins, no role checks
 -------------------------------------------------------- */
 export async function POST(req: Request) {
   try {
@@ -92,10 +65,21 @@ export async function POST(req: Request) {
       )
     }
 
-    const user = await requireManager()
+    const supabaseAuth = createRouteHandlerClient({ cookies })
+    const {
+      data: { user },
+    } = await supabaseAuth.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      )
+    }
 
     /* ---------------------------------------------------
-       Ensure only ONE default Drive config exists
+       Ensure only ONE default Drive exists
+       (latest submission wins)
     --------------------------------------------------- */
     const { error: resetError } = await supabase
       .from("google_drive_settings")
@@ -116,7 +100,7 @@ export async function POST(req: Request) {
       .from("google_drive_settings")
       .insert({
         connected_email: email,
-        credentials: {}, // handled via env / service account
+        credentials: {}, // service account handled via env
         is_default: true,
         created_by: user.id,
       })
@@ -132,21 +116,7 @@ export async function POST(req: Request) {
       success: true,
       message: "Google Drive configured successfully",
     })
-  } catch (err: any) {
-    if (err.message === "UNAUTHORIZED") {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
-    if (err.message === "FORBIDDEN") {
-      return NextResponse.json(
-        { success: false, message: "Manager access required" },
-        { status: 403 }
-      )
-    }
-
+  } catch (err) {
     console.error("POST /api/gdrive error:", err)
     return NextResponse.json(
       { success: false, message: "Server error" },
