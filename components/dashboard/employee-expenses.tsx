@@ -68,9 +68,9 @@ export default function EmployeeExpenses() {
   useEffect(() => {
     const checkDrive = async () => {
       try {
-        const res = await fetch("/api/gdrive", { credentials: "include" })
+        const res = await fetch("/api/gdrive")
         const data = await res.json()
-        setDriveReady(!!data?.email)
+        setDriveReady(Boolean(data?.success && data?.email))
       } catch {
         setDriveReady(false)
       }
@@ -132,6 +132,15 @@ export default function EmployeeExpenses() {
   const submitExpense = async () => {
     if (!userProfile?.email || !userProfile.employee_id) return
 
+    if (!userProfile?.user_id) {
+      toast({
+        title: "User not found",
+        description: "Please log in again.",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (!driveReady) {
       toast({
         title: "Google Drive not configured",
@@ -163,6 +172,7 @@ export default function EmployeeExpenses() {
       const formData = new FormData()
       formData.append("file", file)
       formData.append("transaction_id", transactionId)
+      formData.append("userId", userProfile.user_id) // 🔴 REQUIRED
 
       const uploadRes = await fetch("/api/upload-expense", {
         method: "POST",
