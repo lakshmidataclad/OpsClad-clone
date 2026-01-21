@@ -61,7 +61,7 @@ export default function SettingsTab() {
 
     const loadDriveSettings = async () => {
       try {
-        const res = await fetch("/api/gdrive", { credentials: "include" })
+        const res = await fetch("/api/gdrive")
         const data = await res.json()
 
         if (data.success && data.email) {
@@ -726,6 +726,15 @@ export default function SettingsTab() {
       onSubmit={async (e) => {
         e.preventDefault()
 
+        if (!currentUser?.user_id) {
+          toast({
+            title: "Authentication required",
+            description: "User not found. Please log in again.",
+            variant: "destructive",
+          })
+          return
+        }
+
         if (!driveEmail.trim()) {
           toast({
             title: "Google Drive email required",
@@ -738,16 +747,17 @@ export default function SettingsTab() {
         const res = await fetch("/api/gdrive", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({
             email: driveEmail,
+            userId: currentUser.user_id,
           }),
         })
 
         if (!res.ok) {
+          const err = await res.json()
           toast({
             title: "Failed to save Google Drive",
-            description: "Please try again.",
+            description: err.message || "Unknown error",
             variant: "destructive",
           })
           return

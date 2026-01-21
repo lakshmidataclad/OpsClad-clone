@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { supabase } from "@/lib/supabase"
 
 /* -------------------------------------------------------
@@ -9,18 +7,6 @@ import { supabase } from "@/lib/supabase"
 -------------------------------------------------------- */
 export async function GET() {
   try {
-    const supabaseAuth = createRouteHandlerClient({ cookies })
-    const {
-      data: { user },
-    } = await supabaseAuth.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-
     const { data, error } = await supabase
       .from("google_drive_settings")
       .select("connected_email, created_at, created_by")
@@ -52,11 +38,11 @@ export async function GET() {
 
 /* -------------------------------------------------------
    POST — Set / Change Google Drive configuration
-   Shared (global), latest wins, no role checks
+   Shared (global), latest wins, NO role checks, NO cookies
 -------------------------------------------------------- */
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json()
+    const { email, userId } = await req.json()
 
     if (!email || typeof email !== "string") {
       return NextResponse.json(
@@ -65,15 +51,10 @@ export async function POST(req: Request) {
       )
     }
 
-    const supabaseAuth = createRouteHandlerClient({ cookies })
-    const {
-      data: { user },
-    } = await supabaseAuth.auth.getUser()
-
-    if (!user) {
+    if (!userId || typeof userId !== "string") {
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
+        { success: false, message: "userId is required" },
+        { status: 400 }
       )
     }
 
@@ -100,9 +81,9 @@ export async function POST(req: Request) {
       .from("google_drive_settings")
       .insert({
         connected_email: email,
-        credentials: {}, // service account handled via env
+        credentials: {}, // handled via Render env / service account
         is_default: true,
-        created_by: user.id,
+        created_by: userId,
       })
 
     if (insertError) {
