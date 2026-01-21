@@ -153,8 +153,14 @@ export async function POST(req: Request) {
 
     if (!uploadRes.ok) {
       console.error("Drive upload failed:", uploadData)
+
       return NextResponse.json(
-        { success: false, message: "Google Drive upload failed" },
+        {
+          success: false,
+          message: "Google Drive upload failed",
+          googleError: uploadData, // 🔴 expose it
+          status: uploadRes.status,
+        },
         { status: 500 }
       )
     }

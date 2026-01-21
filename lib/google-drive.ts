@@ -1,6 +1,6 @@
 import crypto from "crypto"
 
-const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive"
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive"
 const TOKEN_URL = "https://oauth2.googleapis.com/token"
 
 function base64url(input: Buffer | string) {
