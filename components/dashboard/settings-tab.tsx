@@ -56,6 +56,14 @@ export default function SettingsTab() {
   const [isManager, setIsManager] = useState(true)
 
 
+  useEffect(() => {
+    if (currentUser?.role === "manager") {
+      setIsManager(true)
+    } else {
+      setIsManager(false)
+    }
+  }, [currentUser])
+
 
   // Load data on component mount - same as ReminderEmailTab
   useEffect(() => {
@@ -768,7 +776,7 @@ export default function SettingsTab() {
           value={driveEmail}
           onChange={(e) => setDriveEmail(e.target.value)}
           placeholder={driveEmail || "finance.drive@gmail.com"}
-          disabled={isLoading || !currentUser}
+          disabled={!isManager}
           className="bg-gray-900 text-white placeholder-gray-400"
         />
       </div>
@@ -778,7 +786,7 @@ export default function SettingsTab() {
       <Button
         type="submit"
         className="w-full bg-red-500 hover:bg-red-600 text-white"
-        disabled={isLoading}
+        disabled={!isManager || isLoading}
       >
         {driveConnected ? "Update Google Drive" : "Connect Google Drive"}
       </Button>

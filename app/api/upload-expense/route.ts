@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import crypto from "crypto"
+import { cookies } from "next/headers"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { getDriveAccessToken } from "@/lib/google-drive"
 import { supabase } from "@/lib/supabase"
 
@@ -12,11 +14,28 @@ const DRIVE_UPLOAD_URL =
 const DRIVE_FILES_URL =
   "https://www.googleapis.com/drive/v3/files"
 
+const MAX_FILE_SIZE_MB = 10
+
 /* -------------------------------------------------------
    POST — Upload expense invoice
 -------------------------------------------------------- */
 export async function POST(req: Request) {
   try {
+    /* ---------------------------------------------------
+       AUTH — must be logged in
+    --------------------------------------------------- */
+    const supabaseAuth = createRouteHandlerClient({ cookies })
+    const {
+      data: { user },
+    } = await supabaseAuth.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
     /* ---------------------------------------------------
        Parse form data
     --------------------------------------------------- */
@@ -32,8 +51,15 @@ export async function POST(req: Request) {
       )
     }
 
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      return NextResponse.json(
+        { success: false, message: "File too large (max 10MB)" },
+        { status: 400 }
+      )
+    }
+
     /* ---------------------------------------------------
-       Load Google Drive config (schema-aligned)
+       Load active Google Drive configuration
     --------------------------------------------------- */
     const { data: driveConfig, error: driveError } = await supabase
       .from("google_drive_settings")
@@ -115,7 +141,7 @@ export async function POST(req: Request) {
       ),
       Buffer.from(
         `--${boundary}\r\n` +
-          `Content-Type: ${file.type}\r\n\r\n`
+          `Content-Type: ${file.type || "application/octet-stream"}\r\n\r\n`
       ),
       fileBuffer,
       Buffer.from(`\r\n--${boundary}--`),
