@@ -6,6 +6,7 @@ export const Config = {
 
   SUPABASE_URL: process.env.SUPABASE_URL!,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  
 }
 
 // lib/config.ts
@@ -46,6 +47,5 @@ export const client_config = {
     token_uri: "https://oauth2.googleapis.com/token",
     auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
     client_secret: Config.GOOGLE_CLIENT_SECRET,
-    redirect_uris: [Config.GOOGLE_REDIRECT_URI, `${Config.GOOGLE_REDIRECT_URI}-destination`],
   },
 } as const
