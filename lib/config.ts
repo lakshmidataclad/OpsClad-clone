@@ -14,7 +14,6 @@ export const googleOAuthConfig = {
   client_secret: process.env.GOOGLE_CLIENT_SECRET as string,
   auth_uri: "https://accounts.google.com/o/oauth2/v2/auth",
   token_uri: "https://oauth2.googleapis.com/token",
-  redirect_uri: process.env.GOOGLE_REDIRECT_URI as string,
   scope: "https://www.googleapis.com/auth/drive.file",
 }
 
@@ -42,7 +41,7 @@ export function assertConfig() {
 export const client_config = {
   web: {
     client_id: Config.GOOGLE_CLIENT_ID,
-    project_id: "opsclad-io",
+    project_id: "opsclad",
     auth_uri: "https://accounts.google.com/o/oauth2/auth",
     token_uri: "https://oauth2.googleapis.com/token",
     auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",

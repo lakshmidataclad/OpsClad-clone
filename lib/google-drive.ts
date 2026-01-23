@@ -8,7 +8,6 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 export function buildGoogleAuthUrl() {
   const params = new URLSearchParams({
     client_id: googleOAuthConfig.client_id,
-    redirect_uri: googleOAuthConfig.redirect_uri,
     response_type: "code",
     scope: googleOAuthConfig.scope,
     access_type: "offline",
@@ -29,7 +28,6 @@ export async function exchangeCodeForTokens(code: string) {
       code,
       client_id: googleOAuthConfig.client_id,
       client_secret: googleOAuthConfig.client_secret,
-      redirect_uri: googleOAuthConfig.redirect_uri,
       grant_type: "authorization_code",
     }),
   })
