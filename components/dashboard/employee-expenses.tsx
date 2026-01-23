@@ -60,6 +60,9 @@ export default function EmployeeExpenses() {
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
 
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+
   // Google Drive readiness (shared / global)
   const [driveReady, setDriveReady] = useState<boolean | null>(null)
 
@@ -77,7 +80,13 @@ export default function EmployeeExpenses() {
     }
 
     checkDrive()
-  }, [])
+
+      return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
 
   /* ---------------- CURRENCY LIST ---------------- */
 
@@ -123,107 +132,83 @@ export default function EmployeeExpenses() {
 
   /* ---------------- SUBMIT EXPENSE ---------------- */
 
-  type UploadResponse = {
-    success: boolean
-    driveUrl: string
-    fileId: string
+
+const submitExpense = async () => {
+  if (!userProfile?.email || !userProfile.employee_id) return
+
+  if (!driveReady) {
+    toast({
+      title: "Google Drive not configured",
+      description:
+        "Expense uploads are unavailable until a company Drive is configured.",
+      variant: "destructive",
+    })
+    return
   }
 
-  const submitExpense = async () => {
-    if (!userProfile?.email || !userProfile.employee_id) return
-
-    if (!userProfile?.user_id) {
-      toast({
-        title: "User not found",
-        description: "Please log in again.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!driveReady) {
-      toast({
-        title: "Google Drive not configured",
-        description:
-          "Expense uploads are unavailable until a company Drive is configured.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!amount || !currency || !type || !file || !description) {
-      toast({
-        title: "Missing fields",
-        description: "All fields including invoice and description are required.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setLoading(true)
-
-    try {
-      const now = new Date()
-      const date = now.toISOString().slice(0, 10).replace(/-/g, "")
-      const time = now.toTimeString().slice(0, 8).replace(/:/g, "")
-      const transactionId = `REM${date}${time}${userProfile.employee_id}`
-
-      // Upload invoice
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("transaction_id", transactionId)
-      formData.append("userId", userProfile.user_id) // 🔴 REQUIRED
-
-      const uploadRes = await fetch("/api/upload-expense", {
-        method: "POST",
-        body: formData,
-      })
-
-      const uploadData = (await uploadRes.json()) as UploadResponse
-
-      if (!uploadData.success) {
-        throw new Error("Invoice upload failed")
-      }
-
-      // Insert expense record
-      const { error } = await supabase.from("expenses").insert({
-        employee_id: userProfile.employee_id,
-        employee_name: userProfile.username,
-        sender_email: userProfile.email,
-        amount: Number(amount),
-        currency,
-        reimbursement_type: type,
-        transaction_id: transactionId,
-        invoice_url: uploadData.driveUrl,
-        google_drive_file_id: uploadData.fileId,
-        invoice_folder: "pending",
-        request_reason: description,
-        status: "pending",
-      })
-
-      if (error) throw error
-
-      toast({ title: "Expense submitted for approval" })
-
-      setAmount("")
-      setCurrency("")
-      setType("")
-      setDescription("")
-      setFile(null)
-
-      loadExpenses(userProfile.email)
-    } catch (err) {
-      console.error(err)
-      toast({
-        title: "Submission failed",
-        description:
-          err instanceof Error ? err.message : "Unexpected error occurred.",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
+  if (!amount || !currency || !type || !file || !description) {
+    toast({
+      title: "Missing fields",
+      description: "All fields including invoice and description are required.",
+      variant: "destructive",
+    })
+    return
   }
+
+  setLoading(true)
+
+  try {
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10).replace(/-/g, "")
+    const time = now.toTimeString().slice(0, 8).replace(/:/g, "")
+    const transactionId = `REM${date}${time}${userProfile.employee_id}`
+
+    const formData = new FormData()
+    formData.append("invoice", file)
+
+    formData.append("employee_id", String(userProfile.employee_id))
+    formData.append("employee_name", String(userProfile.username))
+    formData.append("sender_email", String(userProfile.email))
+    formData.append("amount", String(amount))
+    formData.append("currency", String(currency))
+    formData.append("reimbursement_type", String(type))
+    formData.append("transaction_id", transactionId)
+    formData.append("request_reason", String(description))
+
+    const res = await fetch("/api/google-drive/expenses/submit", {
+      method: "POST",
+      body: formData,
+    })
+
+    const data = await res.json()
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Expense submission failed")
+    }
+
+    toast({ title: "Expense submitted for approval" })
+
+    // reset form
+    setAmount("")
+    setCurrency("")
+    setType("")
+    setDescription("")
+    setFile(null)
+
+    loadExpenses(userProfile.email)
+  } catch (err) {
+    console.error(err)
+    toast({
+      title: "Submission failed",
+      description:
+        err instanceof Error ? err.message : "Unexpected error occurred.",
+      variant: "destructive",
+    })
+  } finally {
+    setLoading(false)
+  }
+}
+
 
   if (!userProfile) return null
 
@@ -305,8 +290,45 @@ export default function EmployeeExpenses() {
         <Input
           type="file"
           accept="image/*,.pdf"
-          onChange={e => setFile(e.target.files?.[0] || null)}
+          onChange={e => {
+            const selectedFile = e.target.files?.[0] || null
+            setFile(selectedFile)
+
+            if (selectedFile) {
+              const url = URL.createObjectURL(selectedFile)
+              setPreviewUrl(url)
+            } else {
+              setPreviewUrl(null)
+            }
+          }}
         />
+        {file && previewUrl && (
+          <div className="mt-4 rounded-lg border border-gray-700 bg-gray-800 p-3">
+            <p className="text-sm text-gray-400 mb-2">
+              Invoice Preview ({file.type})
+            </p>
+
+            {/* IMAGE PREVIEW */}
+            {file.type.startsWith("image/") && (
+              <img
+                src={previewUrl}
+                alt="Invoice preview"
+                className="max-h-96 mx-auto rounded-md"
+              />
+            )}
+
+            {/* PDF PREVIEW */}
+            {file.type === "application/pdf" && (
+              <iframe
+                src={previewUrl}
+                className="w-full h-96 rounded-md"
+                title="PDF Preview"
+              />
+            )}
+          </div>
+        )}
+
+
 
         <Button
           onClick={submitExpense}
