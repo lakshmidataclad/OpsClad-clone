@@ -1,18 +1,17 @@
 // lib/config.ts
 export const Config = {
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID!,
-  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET!,
-  GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI!,
+  GOOGLE_CLIENT_ID: "265447724642-3c722esgq1mo1veu04mjrvrlvrn7p1e8.apps.googleusercontent.com",
+  GOOGLE_CLIENT_SECRET: "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",
 
   SUPABASE_URL: process.env.SUPABASE_URL!,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  
+
 }
 
 // lib/config.ts
 export const googleOAuthConfig = {
-  client_id: process.env.GOOGLE_CLIENT_ID as string,
-  client_secret: process.env.GOOGLE_CLIENT_SECRET as string,
+  client_id: "265447724642-3c722esgq1mo1veu04mjrvrlvrn7p1e8.apps.googleusercontent.com",
+  client_secret: "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",
   auth_uri: "https://accounts.google.com/o/oauth2/v2/auth",
   token_uri: "https://oauth2.googleapis.com/token",
   scope: "https://www.googleapis.com/auth/drive.file",
