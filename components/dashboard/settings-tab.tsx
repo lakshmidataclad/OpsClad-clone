@@ -555,6 +555,53 @@ export default function SettingsTab() {
     }
   }
 
+  const saveExpenseDrive = async () => {
+  if (!currentUser?.user_id) {
+    toast({
+      title: "Authentication required",
+      description: "Please log in again.",
+      variant: "destructive",
+    })
+    return
+  }
+
+  if (!driveEmail.trim()) {
+    toast({
+      title: "Google Drive email required",
+      description: "Please enter a valid Google Drive Gmail address.",
+      variant: "destructive",
+    })
+    return
+  }
+
+  const res = await fetch("/api/gdrive", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: driveEmail,
+      userId: currentUser.user_id,
+    }),
+  })
+
+  const data = await res.json()
+
+  if (!res.ok || !data.success) {
+    toast({
+      title: "Failed to save Google Drive",
+      description: data.message || "Unknown error",
+      variant: "destructive",
+    })
+    return
+  }
+
+  setDriveConnected(true)
+  toast({
+    title: "Google Drive connected",
+    description: "This Drive will now be used for expense invoices.",
+  })
+}
+
+
 
   if (isLoading) {
     return (
@@ -661,137 +708,78 @@ export default function SettingsTab() {
 
 
 
-      
 
-<Card className="bg-white text-gray-800">
-  <CardHeader>
-    <CardTitle>Google Drive (Expense Invoices)</CardTitle>
-  </CardHeader>
+      <Card className="bg-white text-gray-800">
+        <CardHeader>
+          <CardTitle>Google Drive (Expense Invoices)</CardTitle>
+        </CardHeader>
 
-  <CardContent className="space-y-4">
-    {/* STATUS */}
-    <div className="flex items-center gap-2">
-      <div
-        className={`w-3 h-3 rounded-full ${
-          driveConnected ? "bg-green-500" : "bg-red-500"
-        }`}
-      />
-      <span>
-        {driveConnected ? (
-          <span className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            Invoices will be uploaded to Drive owned by {driveEmail}
-          </span>
-        ) : (
-          "Not connected"
-        )}
-      </span>
-    </div>
+        <CardContent className="space-y-4">
+          {/* STATUS */}
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-3 h-3 rounded-full ${
+                driveConnected ? "bg-green-500" : "bg-red-500"
+              }`}
+            />
+            <span>
+              {driveConnected ? (
+                <span className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Invoices will be uploaded to Drive owned by {driveEmail}
+                </span>
+              ) : (
+                "Not connected"
+              )}
+            </span>
+          </div>
 
-    {/* CONNECTED INFO */}
-    {driveConnected && (
-      <Alert className="bg-green-50 border-green-200">
-        <CheckCircle className="h-4 w-4 text-green-500" />
-        <AlertTitle className="text-green-700">
-          Google Drive Connected
-        </AlertTitle>
-        <AlertDescription className="text-green-600">
-          All expense invoices will be automatically uploaded to this
-          company Google Drive account.
-        </AlertDescription>
-      </Alert>
-    )}
+          {driveConnected && (
+            <Alert className="bg-green-50 border-green-200">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <AlertTitle className="text-green-700">
+                Google Drive Connected
+              </AlertTitle>
+              <AlertDescription className="text-green-600">
+                Expense invoices will be uploaded automatically when employees
+                submit claims.
+              </AlertDescription>
+            </Alert>
+          )}
 
-    {/* INFO */}
-    <Alert className="bg-blue-50 border-blue-200">
-      <InfoIcon className="h-4 w-4 text-blue-500" />
-      <AlertTitle className="text-blue-500">
-        How Google Drive is used
-      </AlertTitle>
-      <AlertDescription className="text-gray-700">
-        <ol className="list-decimal ml-5 space-y-1">
-          <li>Invoices are uploaded when employees submit expenses</li>
-          <li>Files are initially stored as <strong>Pending</strong></li>
-          <li>
-            Once approved or rejected, invoices are moved to their
-            respective folders
-          </li>
-          <li>The latest saved Drive becomes the active company Drive</li>
-        </ol>
-      </AlertDescription>
-    </Alert>
+          <Alert className="bg-blue-50 border-blue-200">
+            <InfoIcon className="h-4 w-4 text-blue-500" />
+            <AlertTitle className="text-blue-500">
+              How this is used
+            </AlertTitle>
+            <AlertDescription className="text-gray-700">
+              <ol className="list-decimal ml-5 space-y-1">
+                <li>Employees upload invoices during expense submission</li>
+                <li>Files are stored as <strong>Pending</strong></li>
+                <li>Files move after approval or rejection</li>
+                <li>No employee Google login is required</li>
+              </ol>
+            </AlertDescription>
+          </Alert>
 
-    {/* FORM */}
-    <form
-      onSubmit={async (e) => {
-        e.preventDefault()
+          <div className="space-y-2">
+            <Label>Google Drive Gmail</Label>
+            <Input
+              type="email"
+              value={driveEmail}
+              onChange={(e) => setDriveEmail(e.target.value)}
+              placeholder="finance.drive@gmail.com"
+            />
+          </div>
 
-        if (!currentUser?.user_id) {
-          toast({
-            title: "Authentication required",
-            description: "User not found. Please log in again.",
-            variant: "destructive",
-          })
-          return
-        }
-
-        if (!driveEmail.trim()) {
-          toast({
-            title: "Google Drive email required",
-            description: "Please enter a valid Google Drive Gmail address.",
-            variant: "destructive",
-          })
-          return
-        }
-
-        const res = await fetch("/api/gdrive", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: driveEmail,
-            userId: currentUser.user_id,
-          }),
-        })
-
-        if (!res.ok) {
-          const err = await res.json()
-          toast({
-            title: "Failed to save Google Drive",
-            description: err.message || "Unknown error",
-            variant: "destructive",
-          })
-          return
-        }
-
-        toast({ title: "Google Drive saved as default" })
-        setDriveConnected(true)
-      }}
-      className="space-y-4"
-    >
-
-      <div className="space-y-2">
-        <Label>Google Drive Gmail</Label>
-        <Input
-          type="email"
-          value={driveEmail}
-          onChange={(e) => setDriveEmail(e.target.value)}
-          placeholder={driveEmail || "finance.drive@gmail.com"}
-          className="bg-gray-900 text-white placeholder-gray-400"
-          disabled={isLoading}
-        />
-      </div>
-      <Button
-        type="submit"
-        className="w-full bg-red-500 hover:bg-red-600 text-white"
-        disabled={isLoading}
-
-      >
-        {driveConnected ? "Update Google Drive" : "Connect Google Drive"}
-      </Button>
-    </form>
-  </CardContent>
-</Card>
-
+          <Button
+            className="w-full bg-red-500 hover:bg-red-600 text-white"
+            onClick={saveExpenseDrive}
+          >
+            {driveConnected ? "Update Google Drive" : "Connect Google Drive"}
+          </Button>
+        </CardContent>
+      </Card>
 
 
 
