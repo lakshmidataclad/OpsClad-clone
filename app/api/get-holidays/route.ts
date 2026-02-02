@@ -1,3 +1,4 @@
+// /api/get-holidays/route.ts
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
@@ -11,7 +12,8 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase
     .from("holidays")
-    .select("*")
+    .select("holiday, holiday_date, holiday_description")
+    .eq("created_by", userId)
     .order("holiday_date", { ascending: true })
     .limit(50)
 

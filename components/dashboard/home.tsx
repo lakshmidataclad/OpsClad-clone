@@ -1496,13 +1496,13 @@ const visibleAnnouncements = announcements
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <Calendar className="w-5 h-5" />
-              Upcoming Events
+              Events
             </CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-3">
             {upcomingEvents.length === 0 ? (
-              <p className="text-gray-400">No upcoming events</p>
+              <p className="text-gray-400">No events for this month</p>
             ) : (
               upcomingEvents.map(ev => (
                 <div
