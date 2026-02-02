@@ -985,12 +985,25 @@ export default function SettingsTab() {
                       Displaying the first 50 rows of the currently stored CSV file.
                     </DialogDescription>
                     <div className="flex items-center gap-3 mb-4">
-                      <Label className="text-sm font-medium">Year</Label>
-                      <select
-                        className="border rounded px-3 py-1 text-sm"
-                        value={selectedYear}
-                        onChange={(e) => setSelectedYear(Number(e.target.value))}
-                      >
+                      <Label className="text-sm font-medium text-[#1b2a41]">Year</Label>
+                        <select
+                          className="
+                            bg-white
+                            text-[#1b2a41]
+                            border border-gray-300
+                            rounded-md
+                            px-3 py-1
+                            text-sm
+                            font-semibold
+                            focus:outline-none
+                            focus:ring-2
+                            focus:ring-[#ff6b6b]
+                            focus:border-[#ff6b6b]
+                          "
+                          value={selectedYear}
+                          onChange={(e) => setSelectedYear(Number(e.target.value))}
+                        >
+
                         {[...new Set(
                           holidayData?.map(h => new Date(h.holiday_date).getFullYear())
                         )]
