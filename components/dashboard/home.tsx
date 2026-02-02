@@ -436,14 +436,17 @@ export default function HomePage() {
   const [socialMessages, setSocialMessages] = useState<SocialMessage[]>([])
   const [socialInput, setSocialInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const socialScrollRef = useRef<HTMLDivElement>(null)
+
 
   const [tasks, setTasks] = useState<TaskOverview[]>([])
 
 
   useLayoutEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: socialMessages.length > 1 ? "smooth" : "auto",
-    })
+    const el = socialScrollRef.current
+    if (!el) return
+
+    el.scrollTop = el.scrollHeight
   }, [socialMessages])
 
 
@@ -857,8 +860,6 @@ const formatMonthYear = (date: string) => {
 }
 
 
-
-
 // Filter announcements for the selected month
 const doesAnnouncementOverlapMonth = (
   start: string,
@@ -1008,7 +1009,12 @@ const visibleAnnouncements = announcements
     })
   }, [tasks, userRole, employeeName, monthStart, monthEnd])
 
+  const getOwnerTaskColor = (owner?: string | null) => {
+    if (!owner) return "bg-gray-800 border-gray-700"
 
+    const index = hashStringToIndex(owner, MESSAGE_COLORS.length)
+    return MESSAGE_COLORS[index]
+  }
 
   const upcomingEvents = useMemo(() => {
     const events: {
@@ -1295,15 +1301,24 @@ const visibleAnnouncements = announcements
                 visibleTasks.map(task => (
                   <div
                     key={task.id}
-                    className="p-3 rounded-lg bg-gray-800 border border-gray-700 hover:border-orange-500/50 transition"
+                    className={`
+                      p-4
+                      rounded-lg
+                      border
+                      transition
+                      ${getOwnerTaskColor(task.owner)}
+                      hover:brightness-110
+                    `}
                   >
-                    <div className="flex justify-between items-start gap-3">
+                    {/* 🔹 Top row: Task ID + Status */}
+                    <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-white font-medium">
+                        <p className="text-white font-semibold text-sm tracking-wide">
                           {task.task_id}
                         </p>
+
                         {task.description && (
-                          <p className="text-sm text-gray-400 mt-1">
+                          <p className="text-sm text-gray-300 mt-1 leading-snug">
                             {task.description}
                           </p>
                         )}
@@ -1311,18 +1326,40 @@ const visibleAnnouncements = announcements
 
                       <Badge
                         variant="outline"
-                        className="border-orange-500 text-orange-400"
+                        className="border-orange-500 text-orange-400 shrink-0"
                       >
                         In Progress
                       </Badge>
                     </div>
 
-                    <div className="mt-2 text-xs text-gray-500 flex gap-4">
-                      {task.owner && <span>Owner: {task.owner}</span>}
+                    {/* 🔹 Divider */}
+                    <div className="my-3 h-px bg-white/10" />
+
+                    {/* 🔹 Metadata row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-400">
+                      {/* Owner */}
+                      {task.owner && (
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`
+                              w-2.5 h-2.5 rounded-full
+                              ${getOwnerTaskColor(task.owner)}
+                            `}
+                          />
+                          <span className="text-gray-300 font-medium">
+                            {task.owner}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* ETA */}
                       {task.estimated_completion_date && (
-                        <span>
-                          ETA: {task.estimated_completion_date}
-                        </span>
+                        <div className="flex items-center gap-1 justify-start sm:justify-end">
+                          <span className="text-gray-500">ETA:</span>
+                          <span className="text-gray-300 font-medium">
+                            {task.estimated_completion_date}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1338,7 +1375,10 @@ const visibleAnnouncements = announcements
             </CardHeader>
 
             {/* Social Messages */}
-            <CardContent className="flex-1 overflow-y-auto space-y-3 no-scrollbar">
+            <CardContent
+              ref={socialScrollRef}
+              className="flex-1 overflow-y-auto space-y-3 no-scrollbar"
+            >              
               {socialMessages.length === 0 ? (
                 <p className="text-gray-400 text-sm text-center">
                   No messages yet 👋
@@ -1377,8 +1417,17 @@ const visibleAnnouncements = announcements
                         {!isSameSender && (
                           <div className="flex items-center gap-2 text-xs text-white">
                             <span className="font-semibold">{msg.user_name}</span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-orange-600/20 text-orange-400 border border-orange-500">
-                              {msg.user_role}
+                            <span
+                              className={`
+                                px-2 py-0.5 rounded-full text-[10px] font-semibold border
+                                ${
+                                  msg.user_role === "manager"
+                                    ? "bg-orange-600/20 text-orange-400 border-orange-500"
+                                    : "bg-blue-600/20 text-blue-400 border-blue-500"
+                                }
+                              `}
+                            >
+                              {msg.user_role === "manager" ? "Manager" : "Employee"}
                             </span>
                           </div>
                         )}
@@ -1423,8 +1472,9 @@ const visibleAnnouncements = announcements
                 placeholder="Type a message…"
                 rows={1}
                 className="
-                  bg-gray-800 border-gray-600 text-white resize-none
-                  h-10 min-h-[40px] max-h-[40px] leading-tight
+                  bg-gray-800 border-gray-600 text-white
+                  resize-none overflow-hidden
+                  h-[40px] min-h-[40px] max-h-[40px]
                 "
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
