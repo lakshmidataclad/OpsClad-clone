@@ -1,36 +1,39 @@
-// /api/download-holidays/route.ts
-import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const userId = searchParams.get("userId")
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get("userId");
 
   if (!userId) {
-    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
   }
 
-  const { data, error } = await supabase
-    .from("holidays")
-    .select("holiday, holiday_date, holiday_description")
-    .eq("created_by", userId)
-    .order("holiday_date", { ascending: true })
+  const { data, error } = await supabase.from("holidays").select("*");
 
   if (error) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 })
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 
-  const rows = [
-    "holiday,holiday_date,holiday_description",
-    ...data.map(h =>
-      `"${h.holiday.replace(/"/g, '""')}",${h.holiday_date},"${(h.holiday_description ?? "").replace(/"/g, '""')}"`
-    ),
-  ]
+  const csvRows = [];
+  csvRows.push("holiday,holiday_date,holiday_description");
 
-  return new NextResponse(rows.join("\n"), {
+  data.forEach((h) => {
+    const escape = (v: string) =>
+      `"${String(v ?? "").replace(/"/g, '""')}"`;
+
+    csvRows.push(
+      `${escape(h.holiday)},${h.holiday_date},${escape(h.holiday_description)}`
+    );
+
+  });
+
+  const csv = csvRows.join("\n");
+
+  return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv",
-      "Content-Disposition": "attachment; filename=holidays.csv",
+      "Content-Disposition": `attachment; filename=holidays.csv`,
     },
-  })
+  });
 }
