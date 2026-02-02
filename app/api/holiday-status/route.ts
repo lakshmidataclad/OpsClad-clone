@@ -1,4 +1,4 @@
-// /api/holiday-status/route.ts
+// app/api/holiday-status/route.ts
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 

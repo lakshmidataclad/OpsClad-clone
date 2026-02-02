@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 
   const rows = data.map(r => ({
     holiday: r.holiday,
-    holiday_date: r.holiday_date,
+    holiday_date: new Date(r.holiday_date).toISOString().slice(0, 10),
     holiday_description: r.holiday_description,
     created_by: userId, // ✅ REQUIRED
   }))
