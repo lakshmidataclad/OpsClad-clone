@@ -61,7 +61,7 @@ export default function SettingsTab() {
 
     const loadDriveSettings = async () => {
       try {
-        const res = await fetch("/api/gdrive")
+        const res = await fetch("/api/google-drive")
         const data = await res.json()
 
         if (data.success && data.email) {
