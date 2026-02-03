@@ -10,6 +10,7 @@ export function buildGoogleAuthUrl() {
     client_id: googleOAuthConfig.client_id,
     response_type: "code",
     scope: googleOAuthConfig.scope,
+    redirect_uri: googleOAuthConfig.redirect_uri,
     access_type: "offline",
     prompt: "consent",
   })
@@ -28,6 +29,7 @@ export async function exchangeCodeForTokens(code: string) {
       code,
       client_id: googleOAuthConfig.client_id,
       client_secret: googleOAuthConfig.client_secret,
+      redirect_uri: googleOAuthConfig.redirect_uri,
       grant_type: "authorization_code",
     }),
   })
@@ -48,20 +50,19 @@ export async function saveDriveTokens(tokens: {
   refresh_token?: string
   expires_in: number
 }) {
-  const expires_at = new Date(Date.now() + tokens.expires_in * 1000)
+  const token_expiry = new Date(Date.now() + tokens.expires_in * 1000)
 
   const { error } = await supabaseAdmin
     .from("google_drive_settings")
     .upsert({
       id: 1,
+      folder_id: "root",
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token ?? null,
-      expires_at,
+      token_expiry,
     })
 
-  if (error) {
-    throw new Error(error.message)
-  }
+  if (error) throw new Error(error.message)
 }
 
 /* --------------------------------------------------
@@ -92,9 +93,9 @@ async function getValidAccessToken(): Promise<string> {
   }
 
   // Token still valid
-  if (new Date(data.expires_at) > new Date()) {
-    return data.access_token
-  }
+if (new Date(data.token_expiry) > new Date()) {
+  return data.access_token
+}
 
   // Refresh token
   const res = await fetch(googleOAuthConfig.token_uri, {
@@ -114,14 +115,14 @@ async function getValidAccessToken(): Promise<string> {
   }
 
   const refreshed = await res.json()
-  const expires_at = new Date(Date.now() + refreshed.expires_in * 1000)
+  const token_expiry = new Date(Date.now() + refreshed.expires_in * 1000)
 
-  await supabaseAdmin
-    .from("google_drive_settings")
-    .update({
-      access_token: refreshed.access_token,
-      expires_at,
-    })
+await supabaseAdmin
+  .from("google_drive_settings")
+  .update({
+    access_token: refreshed.access_token,
+    token_expiry,
+  })
     .eq("id", 1)
 
   return refreshed.access_token

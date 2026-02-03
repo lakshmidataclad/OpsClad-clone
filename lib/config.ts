@@ -15,6 +15,8 @@ export const googleOAuthConfig = {
   auth_uri: "https://accounts.google.com/o/oauth2/v2/auth",
   token_uri: "https://oauth2.googleapis.com/token",
   scope: "https://www.googleapis.com/auth/drive.file",
+  redirect_uri: "https://opsclad-clone.onrender.com/api/google-drive/callback"
+
 }
 
 // Fail fast if missing (important on Render)

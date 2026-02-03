@@ -61,11 +61,10 @@ export default function SettingsTab() {
 
     const loadDriveSettings = async () => {
       try {
-        const res = await fetch("/api/google-drive/connect")
+        const res = await fetch("/api/google-drive/status")
         const data = await res.json()
 
-        if (data.success && data.email) {
-          setDriveEmail(data.email)
+        if (data.connected) {
           setDriveConnected(true)
         } else {
           setDriveConnected(false)
@@ -774,8 +773,10 @@ export default function SettingsTab() {
 
           <Button
             className="w-full bg-red-500 hover:bg-red-600 text-white"
-            onClick={saveExpenseDrive}
-          >
+            onClick={() => {
+              window.location.href = "/api/google-drive/connect";
+            }}          
+            >
             {driveConnected ? "Update Google Drive" : "Connect Google Drive"}
           </Button>
         </CardContent>
