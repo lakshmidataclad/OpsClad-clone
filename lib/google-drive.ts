@@ -81,7 +81,7 @@ export async function isDriveConnected() {
 /* --------------------------------------------------
    GET VALID ACCESS TOKEN (AUTO REFRESH)
 --------------------------------------------------- */
-async function getValidAccessToken(): Promise<string> {
+export async function getValidAccessToken(): Promise<string> {
   const { data, error } = await supabaseAdmin
     .from("google_drive_settings")
     .select("*")
