@@ -71,9 +71,9 @@ export default function EmployeeExpenses() {
   useEffect(() => {
     const checkDrive = async () => {
       try {
-  const res = await fetch("/api/google-drive/status")
-    const data = await res.json()
-    setDriveReady(Boolean(data?.connected))
+        const res = await fetch("/api/google-drive/status")
+        const data = await res.json()
+        setDriveReady(Boolean(data?.connected))
       } catch {
         setDriveReady(false)
       }
@@ -81,11 +81,10 @@ export default function EmployeeExpenses() {
 
     checkDrive()
 
-      return () => {
+    return () => {
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl)
       }
-      setFile(null)
     }
   }, [previewUrl])
 
