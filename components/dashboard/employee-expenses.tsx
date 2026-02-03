@@ -53,7 +53,7 @@ export default function EmployeeExpenses() {
   const { toast } = useToast()
 
   const [expenses, setExpenses] = useState<Expense[]>([])
-  const [amount, setAmount] = useState("")
+  const [amount, setAmount] = useState<number | "">("")
   const [currency, setCurrency] = useState("")
   const [type, setType] = useState("")
   const [description, setDescription] = useState("")
@@ -71,9 +71,9 @@ export default function EmployeeExpenses() {
   useEffect(() => {
     const checkDrive = async () => {
       try {
-        const res = await fetch("/api/google-drive")
-        const data = await res.json()
-        setDriveReady(Boolean(data?.success && data?.email))
+  const res = await fetch("/api/google-drive/status")
+    const data = await res.json()
+    setDriveReady(Boolean(data?.connected))
       } catch {
         setDriveReady(false)
       }
@@ -85,6 +85,7 @@ export default function EmployeeExpenses() {
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl)
       }
+      setFile(null)
     }
   }, [previewUrl])
 
@@ -130,6 +131,8 @@ export default function EmployeeExpenses() {
     loadExpenses(userProfile.email)
   }, [userProfile])
 
+  
+
   /* ---------------- SUBMIT EXPENSE ---------------- */
 
 
@@ -146,7 +149,7 @@ const submitExpense = async () => {
     return
   }
 
-  if (!amount || !currency || !type || !file || !description) {
+  if (!amount || amount <= 0 || !currency || !type || !file || !description) {
     toast({
       title: "Missing fields",
       description: "All fields including invoice and description are required.",
@@ -254,7 +257,7 @@ const submitExpense = async () => {
             <Input
               type="number"
               value={amount}
-              onChange={e => setAmount(e.target.value)}
+              onChange={e => setAmount(e.target.value === "" ? "" : Number(e.target.value))}
             />
           </div>
 
