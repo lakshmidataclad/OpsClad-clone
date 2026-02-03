@@ -61,7 +61,7 @@ export default function SettingsTab() {
 
     const loadDriveSettings = async () => {
       try {
-        const res = await fetch("/api/google-drive")
+        const res = await fetch("/api/google-drive/connect")
         const data = await res.json()
 
         if (data.success && data.email) {
@@ -574,7 +574,7 @@ export default function SettingsTab() {
     return
   }
 
-  const res = await fetch("/api/google-drive", {
+  const res = await fetch("/api/google-drive/callback", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

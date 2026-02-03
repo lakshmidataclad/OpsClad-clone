@@ -71,7 +71,7 @@ export default function EmployeeExpenses() {
   useEffect(() => {
     const checkDrive = async () => {
       try {
-        const res = await fetch("/api/gdrive")
+        const res = await fetch("/api/google-drive")
         const data = await res.json()
         setDriveReady(Boolean(data?.success && data?.email))
       } catch {
