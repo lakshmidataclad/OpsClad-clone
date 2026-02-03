@@ -133,7 +133,33 @@ export default function EmployeeExpenses() {
   
 
   /* ---------------- SUBMIT EXPENSE ---------------- */
+const validateExpense = () => {
+  if (!amount || amount <= 0) return "Enter a valid amount"
+  if (!currency) return "Select a currency"
+  if (!type) return "Select an expense type"
+  if (!description.trim()) return "Description is required"
+  if (!file) return "Invoice file is required"
 
+  // File validations
+  const allowedTypes = ["image/jpeg", "image/png", "application/pdf"]
+  if (!allowedTypes.includes(file.type)) {
+    return "Only JPG, PNG, or PDF files are allowed"
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    return "Invoice must be smaller than 5MB"
+  }
+
+  return null
+}
+
+const generateFileHash = async (file: File) => {
+  const buffer = await file.arrayBuffer()
+  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer)
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("")
+}
 
 const submitExpense = async () => {
   if (!userProfile?.email || !userProfile.employee_id) return
@@ -148,10 +174,11 @@ const submitExpense = async () => {
     return
   }
 
-  if (!amount || amount <= 0 || !currency || !type || !file || !description) {
+  const validationError = validateExpense()
+  if (validationError) {
     toast({
-      title: "Missing fields",
-      description: "All fields including invoice and description are required.",
+      title: "Invalid submission",
+      description: validationError,
       variant: "destructive",
     })
     return
@@ -165,8 +192,12 @@ const submitExpense = async () => {
     const time = now.toTimeString().slice(0, 8).replace(/:/g, "")
     const transactionId = `REM${date}${time}${userProfile.employee_id}`
 
+    // ✅ NEW: generate hash
+    const invoiceHash = await generateFileHash(file!)
+
     const formData = new FormData()
-    formData.append("invoice", file)
+    formData.append("invoice", file!)
+    formData.append("invoice_hash", invoiceHash)
 
     formData.append("employee_id", String(userProfile.employee_id))
     formData.append("employee_name", String(userProfile.username))
