@@ -574,7 +574,7 @@ export default function SettingsTab() {
     return
   }
 
-  const res = await fetch("/api/gdrive", {
+  const res = await fetch("/api/google-drive", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
