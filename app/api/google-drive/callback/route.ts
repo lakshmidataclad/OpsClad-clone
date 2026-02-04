@@ -1,6 +1,6 @@
 // app/api/google-drive/callback/route.ts
 import { NextResponse } from "next/server"
-import { exchangeCodeForTokens, saveDriveTokens } from "@/lib/google-drive"
+import { ensureExpenseFolders, exchangeCodeForTokens, saveDriveTokens } from "@/lib/google-drive"
 
 export async function GET(req: Request) {
   try {
@@ -32,13 +32,19 @@ export async function GET(req: Request) {
       expires_in: tokens.expires_in,
     })
 
+        // ✅ NEW: ensure folders exist under the configured root
+    const rootId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID?.replace(/[\r\n]+/g, "").trim()
+      if (rootId) {
+        await ensureExpenseFolders(tokens.access_token, rootId)
+      }
+
     // IMPORTANT:
     // Do NOT use req.url here (Render may resolve to localhost internally)
     // Always redirect to the public app URL
     return NextResponse.redirect(
       "https://opsclad-clone.onrender.com/dashboard?tab=settings&drive=connected"
     )
-    
+
   } catch (err: any) {
     return NextResponse.json(
       { error: err?.message ?? "OAuth callback failed" },

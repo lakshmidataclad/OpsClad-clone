@@ -188,6 +188,58 @@ export async function getOrCreateChildFolder(
 
 
 /* --------------------------------------------------
+   ENSURE EXPENSE FOLDERS
+--------------------------------------------------- */
+export async function ensureExpenseFolders(accessToken: string, rootId: string) {
+  for (const name of ["Pending", "Approved", "Rejected"]) {
+    await getOrCreateChildFolder(accessToken, rootId, name)
+  }
+}
+
+
+
+/* --------------------------------------------------
+   MOVE INVOICE FILE TO APPROVED/REJECTED
+--------------------------------------------------- */
+
+export async function moveInvoiceFile(fileId: string, targetFolder: "Approved" | "Rejected") {
+  const accessToken = await getValidAccessToken()
+
+  const { data: settings } = await supabaseAdmin
+    .from("google_drive_settings")
+    .select("folder_id")
+    .eq("id", 1)
+    .single()
+
+  if (!settings?.folder_id) throw new Error("Expenses root folder not configured")
+
+  const rootId = settings.folder_id.trim()
+  const targetFolderId = await getOrCreateChildFolder(accessToken, rootId, targetFolder)
+
+  const parentsRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  )
+
+  const parentsData = await parentsRes.json()
+  const previousParents = parentsData.parents?.join(",")
+
+  const moveRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?addParents=${targetFolderId}&removeParents=${previousParents}`,
+    { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}` } }
+  )
+
+  if (!moveRes.ok) {
+    const errText = await moveRes.text()
+    throw new Error(errText)
+  }
+
+  return true
+}
+
+
+
+/* --------------------------------------------------
    UPLOAD INVOICE → Expenses/Pending
 --------------------------------------------------- */
 export async function uploadInvoiceToDrive({
