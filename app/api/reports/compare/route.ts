@@ -11,6 +11,9 @@ export async function POST(req: Request) {
     const dateFrom = formData.get("dateFrom") as string
     const dateTo = formData.get("dateTo") as string
     const files = formData.getAll("files") as File[]
+    const employee = formData.get("employee") as string
+    const client = formData.get("client") as string
+    const project = formData.get("project") as string
 
     if (!dateFrom || !dateTo || files.length === 0) {
       return NextResponse.json(
@@ -59,16 +62,56 @@ export async function POST(req: Request) {
 
 
     // 🗄 fetch DB timesheets
-    const { data: dbData } = await supabase
+    let dbQuery = supabase
       .from("timesheets")
       .select("*")
       .gte("date", dateFrom)
       .lte("date", dateTo)
 
+    // 👤 Employee filter
+    if (employee && employee !== "all") {
+      dbQuery = dbQuery.eq("employee_name", employee)
+    }
+
+    // 🏢 Client filter
+    if (client && client !== "all") {
+      dbQuery = dbQuery.eq("client", client)
+    }
+
+    // 🧩 Project filter
+    if (project && project !== "all") {
+      dbQuery = dbQuery.eq("project", project)
+    }
+
+    const { data: dbData } = await dbQuery
+
+
+    const filteredPdfEntries = extractedEntries.filter(e => {
+      if (employee && employee !== "all" && e.employee_name !== employee) {
+        return false
+      }
+
+      if (client && client !== "all" && e.client !== client) {
+        return false
+      }
+
+      if (project && project !== "all" && e.project !== project) {
+        return false
+      }
+
+      // Date safety (PDFs sometimes include extra days)
+      if (e.date < dateFrom || e.date > dateTo) {
+        return false
+      }
+
+      return true
+    })
+
     return NextResponse.json({
-      pdfEntries: extractedEntries,
+      pdfEntries: filteredPdfEntries,
       dbEntries: dbData || []
     })
+
   } catch (e: any) {
     return NextResponse.json(
       { error: e.message },

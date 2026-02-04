@@ -32,35 +32,68 @@ export default function ReportsTab() {
 
 
   const runPdfComparison = async () => {
-  if (!filters.dateFrom || !filters.dateTo || pdfFiles.length === 0) {
-    toast({
-      title: "Missing input",
-      description: "Select date range and upload PDFs",
-      variant: "destructive",
-    })
-    return
+    // 🔒 Date range is mandatory
+    if (!filters.dateFrom || !filters.dateTo) {
+      toast({
+        title: "Date range required",
+        description: "Please select both From Date and To Date before comparing.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (pdfFiles.length === 0) {
+      toast({
+        title: "No files selected",
+        description: "Please upload at least one PDF or image file.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsComparing(true)
+
+    const form = new FormData()
+
+    // ✅ Always send date range
+    form.append("dateFrom", filters.dateFrom)
+    form.append("dateTo", filters.dateTo)
+
+    // ✅ Send optional filters (empty = all)
+    form.append("employee", filters.employee || "all")
+    form.append("client", filters.client || "all")
+    form.append("project", filters.project || "all")
+
+    pdfFiles.forEach(file => form.append("files", file))
+
+    try {
+      const res = await fetch("/api/reports/compare", {
+        method: "POST",
+        body: form,
+      })
+
+      const data = await res.json()
+
+      const { compareTimesheets } = await import("@/lib/compare-timesheets")
+      const results = compareTimesheets(data.pdfEntries, data.dbEntries)
+
+      setComparisonResults(results)
+
+      toast({
+        title: "Comparison complete",
+        description: `Compared ${results.length} extracted entries.`,
+      })
+    } catch (e) {
+      toast({
+        title: "Comparison failed",
+        description: "Something went wrong during comparison.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsComparing(false)
+    }
   }
 
-  setIsComparing(true)
-
-  const form = new FormData()
-  form.append("dateFrom", filters.dateFrom)
-  form.append("dateTo", filters.dateTo)
-  pdfFiles.forEach(f => form.append("files", f))
-
-  const res = await fetch("/api/reports/compare", {
-    method: "POST",
-    body: form,
-  })
-
-  const data = await res.json()
-
-  const { compareTimesheets } = await import("@/lib/compare-timesheets")
-  const results = compareTimesheets(data.pdfEntries, data.dbEntries)
-
-  setComparisonResults(results)
-  setIsComparing(false)
-}
 
 
 
