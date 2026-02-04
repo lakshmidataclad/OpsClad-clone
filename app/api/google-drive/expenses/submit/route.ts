@@ -56,8 +56,12 @@ export async function POST(req: Request) {
 
     const bytes = await file.arrayBuffer()
     const safeTx = transaction_id.replace(/[^a-zA-Z0-9-_]/g, "_")
-    const filename = `${employee_id}_${safeTx}_${file.name}`
+    const originalName = file.name || ""
+    const ext = originalName.includes(".")
+      ? originalName.split(".").pop()
+      : file.type.split("/").pop() || "bin"
 
+    const filename = `${employee_id}_${safeTx}_invoice.${ext}`
     const uploaded = await uploadInvoiceToDrive({
       filename,
       mimeType: file.type || "application/octet-stream",
