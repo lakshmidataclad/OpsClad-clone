@@ -140,7 +140,7 @@ export default function ManagerExpensesTracker() {
     setProcessingId(expense.id)
 
     try {
-      const res = await fetch("/api/expenses/update-status", {
+      const res = await fetch("/api/google-drive/expenses/update-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
