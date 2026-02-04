@@ -52,7 +52,7 @@ export async function saveDriveTokens(tokens: {
 }) {
   const token_expiry = new Date(Date.now() + tokens.expires_in * 1000)
 
-  const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID
+  const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID?.replace(/[\r\n]+/g, "").trim()
 
   if (!rootFolderId) {
     throw new Error("GOOGLE_DRIVE_ROOT_FOLDER_ID is not set")

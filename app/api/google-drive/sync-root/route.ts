@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
 export async function POST() {
-  const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID
+  const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID?.replace(/[\r\n]+/g, "").trim()
 
   if (!rootFolderId) {
     return NextResponse.json(
