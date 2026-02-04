@@ -797,11 +797,10 @@ export default function ReportsTab() {
         <CardContent className="space-y-4">
           <Input
             type="file"
-            accept="application/pdf"
+            accept="application/pdf,image/png,image/jpeg"
             multiple
             onChange={e => setPdfFiles(Array.from(e.target.files || []))}
           />
-
           <Button
             onClick={runPdfComparison}
             disabled={isComparing}

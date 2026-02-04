@@ -28,22 +28,35 @@ export async function POST(req: Request) {
     // 🔁 process each PDF using EXISTING python
     for (const file of files) {
       const buffer = Buffer.from(await file.arrayBuffer())
-      const pdfPath = path.join(uploadDir, file.name)
-      await fs.writeFile(pdfPath, buffer)
+      const filePath = path.join(uploadDir, file.name)
+      await fs.writeFile(filePath, buffer)
 
-      // ⚠️ DO NOT MODIFY PYTHON SCRIPT
-      const python = spawn("python3", [
-        "pdfextract.py",
-        pdfPath
-      ])
+      const ext = file.name.split(".").pop()?.toLowerCase()
+
+      let script = ""
+
+      if (ext === "pdf") {
+        script = "pdfextract.py"
+      } else if (["png", "jpg", "jpeg"].includes(ext || "")) {
+        script = "pngextract.py"
+      } else {
+        continue // unsupported
+      }
+
+      const python = spawn("python3", [script, filePath])
 
       let output = ""
       python.stdout.on("data", d => (output += d.toString()))
       await new Promise(res => python.on("close", res))
 
       const parsed = JSON.parse(output)
-      extractedEntries.push(...parsed.work_entries, ...parsed.pto_entries)
+
+      extractedEntries.push(
+        ...(parsed.work_entries || parsed["Work Entries"] || []),
+        ...(parsed.pto_entries || parsed["PTO Data"] || [])
+      )
     }
+
 
     // 🗄 fetch DB timesheets
     const { data: dbData } = await supabase
