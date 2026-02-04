@@ -245,56 +245,94 @@ export default function ManagerExpensesTracker() {
                   e.sender_email === userProfile.email
 
                 return (
-                  <TableRow key={e.id}>
-                    <TableCell>{e.employee_name}</TableCell>
-                    <TableCell className="text-xs">{e.transaction_id}</TableCell>
-                    <TableCell>
-                      {e.currency} {Number(e.amount).toFixed(2)}
-                    </TableCell>
-                    <TableCell>{e.reimbursement_type}</TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          e.status === "approved"
-                            ? "bg-green-600"
-                            : e.status === "rejected"
-                            ? "bg-red-600"
-                            : "bg-yellow-600"
-                        }
-                      >
-                        {e.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <a
-                        href={e.invoice_url}
-                        target="_blank"
-                        className="text-blue-400 underline"
-                      >
-                        View
-                      </a>
-                    </TableCell>
-                    <TableCell className="space-x-2">
-                      <Button
-                        size="sm"
-                        disabled={disabled}
-                        onClick={() => updateStatus(e, "approved")}
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        disabled={disabled}
-                        onClick={() => updateStatus(e, "rejected")}
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                  <>
+                    {/* MAIN EXPENSE ROW */}
+                    <TableRow key={e.id}>
+                      <TableCell className="font-medium">
+                        {e.employee_name}
+                      </TableCell>
+
+                      <TableCell className="text-xs text-gray-300">
+                        {e.transaction_id}
+                      </TableCell>
+
+                      <TableCell>
+                        {e.currency} {Number(e.amount).toFixed(2)}
+                      </TableCell>
+
+                      <TableCell>{e.reimbursement_type}</TableCell>
+
+                      <TableCell>
+                        <Badge
+                          className={
+                            e.status === "approved"
+                              ? "bg-green-600"
+                              : e.status === "rejected"
+                              ? "bg-red-600"
+                              : "bg-yellow-600"
+                          }
+                        >
+                          {e.status}
+                        </Badge>
+                      </TableCell>
+
+                      <TableCell>
+                        <a
+                          href={e.invoice_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-400 underline"
+                        >
+                          View
+                        </a>
+                      </TableCell>
+
+                      <TableCell className="space-x-2">
+                        <Button
+                          size="sm"
+                          disabled={disabled}
+                          onClick={() => updateStatus(e, "approved")}
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={disabled}
+                          onClick={() => updateStatus(e, "rejected")}
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+
+                    {/* DESCRIPTION ROW */}
+                    <TableRow className="bg-gray-900/40">
+                      <TableCell colSpan={7} className="px-6 pt-1 pb-4">
+                        <div
+                          className="
+                            text-sm
+                            text-gray-300
+                            whitespace-normal
+                            break-words
+                            max-h-[7.5rem]
+                            overflow-y-auto
+                            pr-2
+                          "
+                        >
+                          <span className="text-gray-400 font-semibold">
+                            Description:
+                          </span>{" "}
+                          {e.request_reason || "—"}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  </>
                 )
               })}
             </TableBody>
+
           </Table>
         )}
       </CardContent>
