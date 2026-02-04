@@ -46,13 +46,32 @@ export async function POST(req: Request) {
         continue // unsupported
       }
 
-      const python = spawn("python3", [script, filePath])
+      const python = spawn(
+        process.platform === "win32" ? "python" : "python3",
+        [path.join(process.cwd(), "scripts", script), filePath]
+      )
 
-      let output = ""
-      python.stdout.on("data", d => (output += d.toString()))
-      await new Promise(res => python.on("close", res))
+      let stdout = ""
+      let stderr = ""
 
-      const parsed = JSON.parse(output)
+      python.stdout.on("data", d => (stdout += d.toString()))
+      python.stderr.on("data", d => (stderr += d.toString()))
+
+      const exitCode = await new Promise<number>(res =>
+        python.on("close", res)
+      )
+
+      if (exitCode !== 0) {
+        throw new Error(`Python failed: ${stderr}`)
+      }
+
+      let parsed
+      try {
+        parsed = JSON.parse(stdout)
+      } catch {
+        throw new Error(`Invalid JSON from ${script}:\n${stdout}`)
+      }
+
 
       extractedEntries.push(
         ...(parsed.work_entries || parsed["Work Entries"] || []),
