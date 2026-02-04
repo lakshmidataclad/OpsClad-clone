@@ -36,8 +36,9 @@ export async function GET(req: Request) {
     // Do NOT use req.url here (Render may resolve to localhost internally)
     // Always redirect to the public app URL
     return NextResponse.redirect(
-      "https://opsclad-clone.onrender.com/settings?drive=connected"
+      "https://opsclad-clone.onrender.com/dashboard?tab=settings&drive=connected"
     )
+    
   } catch (err: any) {
     return NextResponse.json(
       { error: err?.message ?? "OAuth callback failed" },

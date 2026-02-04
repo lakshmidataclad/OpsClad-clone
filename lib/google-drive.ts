@@ -137,7 +137,7 @@ export async function getValidAccessToken(): Promise<string> {
 /* --------------------------------------------------
    RESOLVE CHILD FOLDER (Expenses/Pending/etc.)
 --------------------------------------------------- */
-export async function getChildFolderId(
+export async function getOrCreateChildFolder(
   accessToken: string,
   parentId: string,
   name: string
@@ -151,19 +151,41 @@ export async function getChildFolderId(
 
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`,
-    {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }
+    { headers: { Authorization: `Bearer ${accessToken}` } }
   )
 
   const data = await res.json()
 
-  if (!res.ok || !data.files?.length) {
-    throw new Error(`Folder '${name}' not found under Expenses`)
+  if (data.files?.length) {
+    return data.files[0].id
   }
 
-  return data.files[0].id
+  // 🔥 create folder if missing
+  const createRes = await fetch(
+    "https://www.googleapis.com/drive/v3/files",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        mimeType: "application/vnd.google-apps.folder",
+        parents: [parentId],
+      }),
+    }
+  )
+
+  if (!createRes.ok) {
+    const text = await createRes.text()
+    throw new Error(`Failed to create folder '${name}': ${text}`)
+  }
+
+  const created = await createRes.json()
+  return created.id
 }
+
 
 /* --------------------------------------------------
    UPLOAD INVOICE → Expenses/Pending
@@ -191,7 +213,7 @@ export async function uploadInvoiceToDrive({
 
   const parentId = settings.folder_id.trim()
   // 2️⃣ Resolve Pending folder
-  const pendingFolderId = await getChildFolderId(
+  const pendingFolderId = await getOrCreateChildFolder(
     accessToken,
     parentId ,
     "Pending"

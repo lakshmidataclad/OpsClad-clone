@@ -82,7 +82,7 @@ export async function POST(req: Request) {
         invoice_url: uploaded.webViewLink,
         google_drive_file_id: uploaded.id,
         request_reason,
-        invoice_folder: "pending",
+        invoice_folder: "Pending",
       })
       .select("*")
       .single()
