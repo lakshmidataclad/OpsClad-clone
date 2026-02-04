@@ -22,6 +22,49 @@ export default function ReportsTab() {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
+
+
+  
+  const [pdfFiles, setPdfFiles] = useState<File[]>([])
+  const [comparisonResults, setComparisonResults] = useState<any[]>([])
+  const [isComparing, setIsComparing] = useState(false)
+
+
+
+  const runPdfComparison = async () => {
+  if (!filters.dateFrom || !filters.dateTo || pdfFiles.length === 0) {
+    toast({
+      title: "Missing input",
+      description: "Select date range and upload PDFs",
+      variant: "destructive",
+    })
+    return
+  }
+
+  setIsComparing(true)
+
+  const form = new FormData()
+  form.append("dateFrom", filters.dateFrom)
+  form.append("dateTo", filters.dateTo)
+  pdfFiles.forEach(f => form.append("files", f))
+
+  const res = await fetch("/api/reports/compare", {
+    method: "POST",
+    body: form,
+  })
+
+  const data = await res.json()
+
+  const { compareTimesheets } = await import("@/lib/compare-timesheets")
+  const results = compareTimesheets(data.pdfEntries, data.dbEntries)
+
+  setComparisonResults(results)
+  setIsComparing(false)
+}
+
+
+
+
   const [filters, setFilters] = useState<FilterOptions>({
     employee: "",
     client: "",
@@ -740,6 +783,67 @@ export default function ReportsTab() {
                   No data found for the selected month.
                 </div>
               )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      <Card className="bg-white">
+        <CardHeader>
+          <CardTitle className="text-black">
+            Accountant PDF vs Timesheet Comparison
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          <Input
+            type="file"
+            accept="application/pdf"
+            multiple
+            onChange={e => setPdfFiles(Array.from(e.target.files || []))}
+          />
+
+          <Button
+            onClick={runPdfComparison}
+            disabled={isComparing}
+            className="bg-orange-600 text-white"
+          >
+            {isComparing ? "Comparing..." : "Compare PDFs"}
+          </Button>
+
+          {comparisonResults.length > 0 && (
+            <div className="border rounded max-h-[400px] overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-100 sticky top-0">
+                  <tr>
+                    <th>Date</th>
+                    <th>Activity</th>
+                    <th>PDF Hours</th>
+                    <th>DB Hours</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparisonResults.map((r, i) => (
+                    <tr key={i} className="border-b">
+                      <td>{r.date}</td>
+                      <td>{r.activity}</td>
+                      <td>{r.pdf_hours}</td>
+                      <td>{r.db_hours ?? "-"}</td>
+                      <td
+                        className={
+                          r.status === "MATCH"
+                            ? "text-green-600"
+                            : r.status === "HOURS_MISMATCH"
+                            ? "text-orange-600"
+                            : "text-red-600"
+                        }
+                      >
+                        {r.status}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
