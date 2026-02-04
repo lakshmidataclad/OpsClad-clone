@@ -725,7 +725,7 @@ export default function SettingsTab() {
               {driveConnected ? (
                 <span className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  Invoices will be uploaded to Drive owned by {driveEmail}
+                  Drive Connected
                 </span>
               ) : (
                 "Not connected"
@@ -763,12 +763,6 @@ export default function SettingsTab() {
 
           <div className="space-y-2">
             <Label>Google Drive Gmail</Label>
-            <Input
-              type="email"
-              value={driveEmail}
-              onChange={(e) => setDriveEmail(e.target.value)}
-              placeholder="finance.drive@gmail.com"
-            />
           </div>
 
           <Button

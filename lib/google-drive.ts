@@ -189,10 +189,11 @@ export async function uploadInvoiceToDrive({
     throw new Error("Expenses folder not configured")
   }
 
+  const parentId = settings.folder_id.trim()
   // 2️⃣ Resolve Pending folder
   const pendingFolderId = await getChildFolderId(
     accessToken,
-    settings.folder_id,
+    parentId ,
     "Pending"
   )
 

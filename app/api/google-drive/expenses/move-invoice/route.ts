@@ -43,9 +43,11 @@ export async function POST(req: Request) {
       )
     }
 
+    const parentId = settings.folder_id.trim()
+
     // 2️⃣ Resolve target folder ID by name
     const q = [
-      `'${settings.folder_id}' in parents`,
+      `'${parentId}' in parents`,
       `name='${targetFolder}'`,
       `mimeType='application/vnd.google-apps.folder'`,
       `trashed=false`,
