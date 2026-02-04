@@ -59,7 +59,7 @@ export default function ManagerExpensesTracker() {
     setLoading(true)
 
     try {
-      const res = await fetch("/api/expenses/list")
+      const res = await fetch("/api/google-drive/expenses/list")
       const data = await res.json()
 
       if (!res.ok || !data.success) {
