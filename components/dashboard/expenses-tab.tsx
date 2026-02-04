@@ -46,6 +46,11 @@ export default function ManagerExpensesTracker() {
   const { toast } = useToast()
   const { userProfile } = useAuth()
 
+  const currentYear = new Date().getFullYear()
+
+  const [search, setSearch] = useState("")
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear)
+
   const isManager = useMemo(() => {
     // adjust this if your userProfile uses a different key
     return userProfile?.role === "manager"
@@ -87,6 +92,31 @@ export default function ManagerExpensesTracker() {
     setExpenses((data as Expense[]) || [])
     setLoading(false)
   }
+
+  /* ---------------- FILTERING ---------------- */
+
+  const availableYears = useMemo(() => {
+    const years = expenses.map(e => new Date(e.created_at).getFullYear())
+    return Array.from(new Set(years)).sort((a, b) => b - a)
+  }, [expenses])
+
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(e => {
+      const yearMatches =
+        new Date(e.created_at).getFullYear() === selectedYear
+
+      const q = search.toLowerCase()
+
+      const searchMatches =
+        e.employee_name.toLowerCase().includes(q) ||
+        e.sender_email.toLowerCase().includes(q) ||
+        e.transaction_id.toLowerCase().includes(q) ||
+        e.reimbursement_type.toLowerCase().includes(q) ||
+        e.request_reason.toLowerCase().includes(q)
+
+      return yearMatches && searchMatches
+    })
+  }, [expenses, search, selectedYear])
 
   /* ---------------- UPDATE STATUS ---------------- */
 
@@ -200,6 +230,53 @@ export default function ManagerExpensesTracker() {
       </CardHeader>
 
       <CardContent>
+
+        {/* SEARCH + YEAR FILTER */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <input
+            type="text"
+            placeholder="Search by employee, email, txn ID, type, description…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="
+              w-full md:w-2/3
+              rounded-md
+              border border-gray-700
+              bg-gray-800
+              px-3 py-2
+              text-sm
+              text-white
+              placeholder-gray-400
+              focus:outline-none
+              focus:ring-2
+              focus:ring-orange-500
+            "
+          />
+
+          <select
+            value={selectedYear}
+            onChange={e => setSelectedYear(Number(e.target.value))}
+            className="
+              w-full md:w-1/3
+              rounded-md
+              border border-gray-700
+              bg-gray-800
+              px-3 py-2
+              text-sm
+              text-white
+              focus:outline-none
+              focus:ring-2
+              focus:ring-orange-500
+            "
+          >
+            {availableYears.map(y => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center py-10 text-gray-300 gap-2">
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -221,7 +298,7 @@ export default function ManagerExpensesTracker() {
             </TableHeader>
 
             <TableBody>
-              {expenses.map((e) => {
+              {filteredExpenses.map((e) => {
                 const isPending = e.status === "pending"
                 const isOwn = e.sender_email === userProfile.email
                 const disabled = processingId === e.id || !isPending || isOwn
@@ -302,10 +379,10 @@ export default function ManagerExpensesTracker() {
                 )
               })}
 
-              {expenses.length === 0 && (
+              {filteredExpenses.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-gray-400 py-6">
-                    No expenses found
+                    No expenses found for {selectedYear}
                   </TableCell>
                 </TableRow>
               )}
