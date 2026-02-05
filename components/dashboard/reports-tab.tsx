@@ -85,13 +85,27 @@ export default function ReportsTab() {
       })
 
       if (!res.ok) {
-        throw new Error("Server error")
+        const text = await res.text()
+        console.error("Compare API failed:", text)
+
+        setCompareState("error")
+        toast({
+          title: "Comparison failed",
+          description: "The comparison service returned an error.",
+          variant: "destructive",
+        })
+        return
       }
 
       const data = await res.json()
 
-      const pdfEntries = data.pdfEntries || []
-      const dbEntries = data.dbEntries || []
+      const pdfEntries = Array.isArray(data?.pdfEntries)
+        ? data.pdfEntries
+        : []
+
+      const dbEntries = Array.isArray(data?.dbEntries)
+        ? data.dbEntries
+        : []
 
       setExtractedPdfEntries(pdfEntries)
       setDbEntries(dbEntries)
@@ -112,6 +126,18 @@ export default function ReportsTab() {
         toast({
           title: "No matching records",
           description: "No timesheet data exists in the system for the selected date range.",
+        })
+        return
+      }
+
+      if (pdfEntries.length > 0 && dbEntries.length === 0) {
+        setCompareState("no_db_data")
+        setExtractedPdfEntries(pdfEntries)
+
+        toast({
+          title: "No matching timesheet data",
+          description:
+            "Data was extracted from the file, but no matching timesheet exists for the selected date range.",
         })
         return
       }
@@ -811,13 +837,44 @@ export default function ReportsTab() {
             multiple
             onChange={e => setPdfFiles(Array.from(e.target.files || []))}
           />
+          <p className="text-sm text-gray-500">
+            Supported formats: PDF, PNG, JPG (OCR-based extraction)
+          </p>
           <Button
             onClick={runPdfComparison}
             disabled={isComparing}
             className="bg-orange-600 text-white"
           >
-            {isComparing ? "Comparing..." : "Compare PDFs"}
+            {isComparing ? "Comparing..." : "Compare Files"}
           </Button>
+
+          {compareState === "no_db_data" && extractedPdfEntries.length > 0 && (
+          <div className="border rounded-lg p-4 bg-yellow-50">
+            <h4 className="font-medium mb-2 text-yellow-700">
+              Extracted data from uploaded file
+            </h4>
+
+            <table className="w-full text-sm">
+              <thead className="bg-yellow-100">
+                <tr>
+                  <th>Date</th>
+                  <th>Activity</th>
+                  <th>Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                {extractedPdfEntries.map((e, i) => (
+                  <tr key={i} className="border-b">
+                    <td>{e.date}</td>
+                    <td>{e.activity}</td>
+                    <td>{e.hours}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
 
           {compareState === "no_pdf_data" && (
             <div className="bg-gray-100 border rounded p-4 text-gray-700">
