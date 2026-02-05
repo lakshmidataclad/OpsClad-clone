@@ -15,10 +15,11 @@ export async function POST(req: Request) {
     const client = formData.get("client") as string
     const project = formData.get("project") as string
 
+    // 🔒 Basic validation (still OK to 400 here)
     if (!dateFrom || !dateTo || files.length === 0) {
       return NextResponse.json(
-        { error: "Missing date range or files" },
-        { status: 400 }
+        { error: "Missing date range or files", pdfEntries: [], dbEntries: [] },
+        { status: 200 }
       )
     }
 
@@ -28,8 +29,14 @@ export async function POST(req: Request) {
 
     const extractedEntries: any[] = []
 
-    // 🔁 process each PDF using EXISTING python
+    // 🔁 process each file using EXISTING python scripts
     for (const file of files) {
+      console.log("Processing file:", {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      })
+
       const buffer = Buffer.from(await file.arrayBuffer())
       const filePath = path.join(uploadDir, file.name)
       await fs.writeFile(filePath, buffer)
@@ -43,7 +50,8 @@ export async function POST(req: Request) {
       } else if (["png", "jpg", "jpeg"].includes(ext || "")) {
         script = "pngextract.py"
       } else {
-        continue // unsupported
+        console.warn("Unsupported file type:", file.name)
+        continue
       }
 
       const python = spawn(
@@ -61,24 +69,25 @@ export async function POST(req: Request) {
         python.on("close", res)
       )
 
+      // ⚠️ Python failure should NOT crash API
       if (exitCode !== 0) {
-        throw new Error(`Python failed: ${stderr}`)
+        console.warn(`Python failed for ${file.name}:`, stderr)
+        continue
       }
 
-      let parsed
+      let parsed: any = {}
       try {
         parsed = JSON.parse(stdout)
       } catch {
-        throw new Error(`Invalid JSON from ${script}:\n${stdout}`)
+        console.warn(`Invalid JSON from ${script} for ${file.name}`)
+        continue
       }
-
 
       extractedEntries.push(
         ...(parsed.work_entries || parsed["Work Entries"] || []),
         ...(parsed.pto_entries || parsed["PTO Data"] || [])
       )
     }
-
 
     // 🗄 fetch DB timesheets
     let dbQuery = supabase
@@ -102,9 +111,13 @@ export async function POST(req: Request) {
       dbQuery = dbQuery.eq("project", project)
     }
 
-    const { data: dbData } = await dbQuery
+    const { data: dbData, error: dbError } = await dbQuery
 
+    if (dbError) {
+      console.error("DB query error:", dbError)
+    }
 
+    // 🔎 Filter extracted entries by same filters
     const filteredPdfEntries = extractedEntries.filter(e => {
       if (employee && employee !== "all" && e.employee_name !== employee) {
         return false
@@ -118,7 +131,7 @@ export async function POST(req: Request) {
         return false
       }
 
-      // Date safety (PDFs sometimes include extra days)
+      // Date safety (PDFs / OCR may include extra days)
       if (e.date < dateFrom || e.date > dateTo) {
         return false
       }
@@ -126,15 +139,23 @@ export async function POST(req: Request) {
       return true
     })
 
+    // ✅ ALWAYS return a valid JSON shape
     return NextResponse.json({
       pdfEntries: filteredPdfEntries,
-      dbEntries: dbData || []
+      dbEntries: dbData || [],
     })
 
   } catch (e: any) {
+    console.error("Compare API fatal error:", e)
+
+    // ❗ Never break frontend flow with 500
     return NextResponse.json(
-      { error: e.message },
-      { status: 500 }
+      {
+        error: e.message,
+        pdfEntries: [],
+        dbEntries: [],
+      },
+      { status: 200 }
     )
   }
 }
