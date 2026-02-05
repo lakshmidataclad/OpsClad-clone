@@ -228,7 +228,7 @@ export default function ManagerExpensesTracker() {
             <TableHeader>
               <TableRow>
                 <TableHead>Employee</TableHead>
-                <TableHead>Txn ID</TableHead>
+                <TableHead>Trn ID</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>

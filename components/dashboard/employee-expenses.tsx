@@ -38,6 +38,7 @@ import { useToast } from "@/hooks/use-toast"
 interface Expense {
   id: string
   amount: number
+  currency: string  
   reimbursement_type: string
   transaction_id: string
   invoice_url: string
@@ -375,7 +376,8 @@ const submitExpense = async () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Txn ID</TableHead>
+              <TableHead>Trn ID</TableHead>
+              <TableHead>Currency</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
@@ -389,6 +391,7 @@ const submitExpense = async () => {
                 <TableCell className="text-xs">
                   {e.transaction_id}
                 </TableCell>
+                <TableCell>{e.currency}</TableCell>
                 <TableCell>{e.amount}</TableCell>
                 <TableCell>{e.reimbursement_type}</TableCell>
                 <TableCell>

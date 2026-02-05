@@ -24,7 +24,19 @@ export default function ReportsTab() {
 
 
 
-  
+  type CompareState =
+    | "idle"
+    | "no_files"
+    | "no_pdf_data"
+    | "no_db_data"
+    | "no_match"
+    | "partial"
+    | "success"
+    | "error"
+
+  const [compareState, setCompareState] = useState<CompareState>("idle")
+  const [extractedPdfEntries, setExtractedPdfEntries] = useState<any[]>([])
+  const [dbEntries, setDbEntries] = useState<any[]>([])
   const [pdfFiles, setPdfFiles] = useState<File[]>([])
   const [comparisonResults, setComparisonResults] = useState<any[]>([])
   const [isComparing, setIsComparing] = useState(false)
@@ -72,26 +84,69 @@ export default function ReportsTab() {
         body: form,
       })
 
+      if (!res.ok) {
+        throw new Error("Server error")
+      }
+
       const data = await res.json()
 
+      const pdfEntries = data.pdfEntries || []
+      const dbEntries = data.dbEntries || []
+
+      setExtractedPdfEntries(pdfEntries)
+      setDbEntries(dbEntries)
+
+      // ❌ Nothing extracted from PDF/image
+      if (pdfEntries.length === 0) {
+        setCompareState("no_pdf_data")
+        toast({
+          title: "No data extracted",
+          description: "No timesheet data could be extracted from the uploaded files.",
+        })
+        return
+      }
+
+      // ⚠️ Extracted data exists but DB has none
+      if (dbEntries.length === 0) {
+        setCompareState("no_db_data")
+        toast({
+          title: "No matching records",
+          description: "No timesheet data exists in the system for the selected date range.",
+        })
+        return
+      }
+
       const { compareTimesheets } = await import("@/lib/compare-timesheets")
-      const results = compareTimesheets(data.pdfEntries, data.dbEntries)
+      const results = compareTimesheets(pdfEntries, dbEntries)
 
       setComparisonResults(results)
 
+      if (results.length === 0) {
+        setCompareState("no_match")
+        toast({
+          title: "No matches found",
+          description: "Extracted data did not match any existing timesheets.",
+        })
+        return
+      }
+
+      setCompareState("success")
       toast({
         title: "Comparison complete",
-        description: `Compared ${results.length} extracted entries.`,
+        description: `Compared ${results.length} entries.`,
       })
     } catch (e) {
+      console.error(e)
+      setCompareState("error")
       toast({
         title: "Comparison failed",
-        description: "Something went wrong during comparison.",
+        description: "Unexpected error occurred during comparison.",
         variant: "destructive",
       })
     } finally {
       setIsComparing(false)
     }
+
   }
 
 
@@ -742,6 +797,107 @@ export default function ReportsTab() {
         </Card>
       )}
 
+      <Card className="bg-white">
+        <CardHeader>
+          <CardTitle className="text-black">
+            Comparison
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          <Input
+            type="file"
+            accept="application/pdf,image/png,image/jpeg"
+            multiple
+            onChange={e => setPdfFiles(Array.from(e.target.files || []))}
+          />
+          <Button
+            onClick={runPdfComparison}
+            disabled={isComparing}
+            className="bg-orange-600 text-white"
+          >
+            {isComparing ? "Comparing..." : "Compare PDFs"}
+          </Button>
+
+          {compareState === "no_pdf_data" && (
+            <div className="bg-gray-100 border rounded p-4 text-gray-700">
+              No timesheet information could be extracted from the uploaded files.
+            </div>
+          )}
+
+          {compareState === "no_match" && (
+            <div className="bg-orange-100 border rounded p-4 text-orange-700">
+              Data was extracted, but no matching timesheet entries were found.
+            </div>
+          )}
+
+          {comparisonResults.length > 0 && (
+            <div className="border rounded max-h-[400px] overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-100 sticky top-0">
+                  <tr>
+                    <th>Date</th>
+                    <th>Activity</th>
+                    <th>PDF Hours</th>
+                    <th>DB Hours</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparisonResults.map((r, i) => (
+                    <tr key={i} className="border-b">
+                      <td>{r.date}</td>
+                      <td>{r.activity}</td>
+                      <td>{r.pdf_hours}</td>
+                      <td>{r.db_hours ?? "-"}</td>
+                      <td
+                        className={
+                          r.status === "MATCH"
+                            ? "text-green-600"
+                            : r.status === "HOURS_MISMATCH"
+                            ? "text-orange-600"
+                            : "text-red-600"
+                        }
+                      >
+                        {r.status}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+        {/* Extracted PDF/Image Data */}
+        {compareState === "no_db_data" && extractedPdfEntries.length > 0 && (
+          <div className="border rounded-lg p-4 bg-yellow-50">
+            <h4 className="font-medium mb-2 text-yellow-700">
+              Extracted Data (No matching DB records)
+            </h4>
+
+            <table className="w-full text-sm">
+              <thead className="bg-yellow-100">
+                <tr>
+                  <th>Date</th>
+                  <th>Activity</th>
+                  <th>Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                {extractedPdfEntries.map((e, i) => (
+                  <tr key={i} className="border-b">
+                    <td>{e.date}</td>
+                    <td>{e.activity}</td>
+                    <td>{e.hours}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+      </Card>
+
       {/* Monthly Report Section */}
       <Card className="bg-white border-gray-700">
         <CardHeader>
@@ -816,66 +972,6 @@ export default function ReportsTab() {
                   No data found for the selected month.
                 </div>
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      <Card className="bg-white">
-        <CardHeader>
-          <CardTitle className="text-black">
-            Accountant PDF vs Timesheet Comparison
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          <Input
-            type="file"
-            accept="application/pdf,image/png,image/jpeg"
-            multiple
-            onChange={e => setPdfFiles(Array.from(e.target.files || []))}
-          />
-          <Button
-            onClick={runPdfComparison}
-            disabled={isComparing}
-            className="bg-orange-600 text-white"
-          >
-            {isComparing ? "Comparing..." : "Compare PDFs"}
-          </Button>
-
-          {comparisonResults.length > 0 && (
-            <div className="border rounded max-h-[400px] overflow-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-100 sticky top-0">
-                  <tr>
-                    <th>Date</th>
-                    <th>Activity</th>
-                    <th>PDF Hours</th>
-                    <th>DB Hours</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comparisonResults.map((r, i) => (
-                    <tr key={i} className="border-b">
-                      <td>{r.date}</td>
-                      <td>{r.activity}</td>
-                      <td>{r.pdf_hours}</td>
-                      <td>{r.db_hours ?? "-"}</td>
-                      <td
-                        className={
-                          r.status === "MATCH"
-                            ? "text-green-600"
-                            : r.status === "HOURS_MISMATCH"
-                            ? "text-orange-600"
-                            : "text-red-600"
-                        }
-                      >
-                        {r.status}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           )}
         </CardContent>
