@@ -22,6 +22,10 @@ export default function ReportsTab() {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
+  const [reportMonth, setReportMonth] = useState(
+  `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
+  )
+
 
 
   type CompareState =
@@ -177,8 +181,6 @@ export default function ReportsTab() {
 
 
 
-
-
   const [filters, setFilters] = useState<FilterOptions>({
     employee: "",
     client: "",
@@ -187,18 +189,100 @@ export default function ReportsTab() {
     dateTo: "",
   })
 
-  const normalizeToISO = (dateStr: string) => {
-    if (!dateStr) return ""
-    if (dateStr.includes("/")) {
-      const [m, d, y] = dateStr.split("/")
-      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
+  const normalizeToISO = (raw: string, opts?: { preferDMY?: boolean }) => {
+    if (!raw) return ""
+
+    const preferDMY = opts?.preferDMY ?? true // Singapore default
+
+    // Trim + remove time portion if present
+    const s = String(raw).trim()
+
+    // If already ISO or ISO datetime
+    const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (isoMatch) {
+      const y = Number(isoMatch[1])
+      const m = Number(isoMatch[2])
+      const d = Number(isoMatch[3])
+      return isValidYMD(y, m, d) ? `${pad4(y)}-${pad2(m)}-${pad2(d)}` : ""
     }
-    if (dateStr.includes("-") && dateStr.split("-")[0].length === 4) {
-      return dateStr // already YYYY-MM-DD
+
+    // YYYY/MM/DD
+    const ymdSlash = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/)
+    if (ymdSlash) {
+      const y = Number(ymdSlash[1])
+      const m = Number(ymdSlash[2])
+      const d = Number(ymdSlash[3])
+      return isValidYMD(y, m, d) ? `${pad4(y)}-${pad2(m)}-${pad2(d)}` : ""
     }
-    // DD-MM-YYYY → YYYY-MM-DD
-    const [d, m, y] = dateStr.split("-")
-    return `${y}-${m}-${d}`
+
+    // YYYYMMDD
+    const compact = s.match(/^(\d{4})(\d{2})(\d{2})$/)
+    if (compact) {
+      const y = Number(compact[1])
+      const m = Number(compact[2])
+      const d = Number(compact[3])
+      return isValidYMD(y, m, d) ? `${pad4(y)}-${pad2(m)}-${pad2(d)}` : ""
+    }
+
+    // Split by / or -
+    const parts = s.split(/[\/\-]/).map(p => p.trim())
+    if (parts.length !== 3) return ""
+
+    // If year-first like 2026-2-1 or 2026/2/1
+    if (parts[0].length === 4) {
+      const y = Number(parts[0])
+      const m = Number(parts[1])
+      const d = Number(parts[2])
+      return isValidYMD(y, m, d) ? `${pad4(y)}-${pad2(m)}-${pad2(d)}` : ""
+    }
+
+    // Otherwise it's either D/M/Y or M/D/Y (or with -)
+    const a = Number(parts[0])
+    const b = Number(parts[1])
+    const y = Number(parts[2])
+
+    if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(y)) return ""
+    if (parts[2].length !== 4) return "" // avoid 2-digit years ambiguity
+
+    let day: number
+    let month: number
+
+    // If one of them > 12, that must be the day
+    if (a > 12 && b <= 12) {
+      day = a
+      month = b
+    } else if (b > 12 && a <= 12) {
+      day = b
+      month = a
+    } else {
+      // Both <= 12 => ambiguous. Use preference.
+      if (preferDMY) {
+        day = a
+        month = b
+      } else {
+        month = a
+        day = b
+      }
+    }
+
+    return isValidYMD(y, month, day) ? `${pad4(y)}-${pad2(month)}-${pad2(day)}` : ""
+  }
+
+  const pad2 = (n: number) => String(n).padStart(2, "0")
+  const pad4 = (n: number) => String(n).padStart(4, "0")
+
+  const isValidYMD = (y: number, m: number, d: number) => {
+    if (y < 1900 || y > 2100) return false
+    if (m < 1 || m > 12) return false
+    if (d < 1 || d > 31) return false
+
+    // Real calendar validation
+    const dt = new Date(y, m - 1, d)
+    return (
+      dt.getFullYear() === y &&
+      dt.getMonth() === m - 1 &&
+      dt.getDate() === d
+    )
   }
 
   const formatForDisplay = (isoDate: string) => {
@@ -282,9 +366,8 @@ export default function ReportsTab() {
 
       // 7️⃣ Sort by date (latest first)
       combined.sort(
-        (a, b) =>
-          new Date(normalizeToISO(b.date)).getTime() -
-          new Date(normalizeToISO(a.date)).getTime()
+        (a: any, b: any) =>
+          new Date(b._isoDate).getTime() - new Date(a._isoDate).getTime()
       )
 
       setCombinedData(combined)
@@ -359,7 +442,9 @@ export default function ReportsTab() {
 
       // Date filters
       if (filters.dateFrom || filters.dateTo) {
-      const itemDate = new Date(normalizeToISO(item.date))
+      const iso = item._isoDate || normalizeToISO(item.date, { preferDMY: true })
+        if (!iso) return false
+      const itemDate = new Date(iso)
         if (filters.dateFrom && itemDate < new Date(filters.dateFrom)) {
           return false
         }
@@ -433,9 +518,9 @@ export default function ReportsTab() {
     const uniqueProjects = new Set(data.map((item) => item.project).filter(Boolean))
 
     const dates = data
-      .map((item) => item._isoDate)
+      .map((item: any) => item._isoDate || normalizeToISO(item.date, { preferDMY: true }))
       .filter(Boolean)
-      .map((d) => new Date(d))   
+      .map((d: string) => new Date(d))
 
     const uniqueDates = new Set(dates.map((date) => date.toDateString()))
     const avgHoursPerDay = uniqueDates.size > 0 ? totalHours / uniqueDates.size : 0
@@ -467,9 +552,8 @@ export default function ReportsTab() {
   }
 
   const generateMonthlyReport = () => {
-    const monthInput = document.getElementById("report-month") as HTMLInputElement
-    const selectedMonth = monthInput.value
 
+    const selectedMonth = reportMonth
     if (!selectedMonth) {
       toast({
         title: "Month required",
@@ -488,10 +572,15 @@ export default function ReportsTab() {
       return
     }
 
-    const [year, month] = selectedMonth.split("-")
-    const monthlyData = combinedData.filter((item) => {
-      const itemDate = new Date(item.date)
-      return itemDate.getFullYear() == Number(year) && itemDate.getMonth() + 1 == Number(month)
+    const [year, month] = selectedMonth.split("-") // "2026", "02"
+    const y = Number(year)
+    const m = Number(month) // 1..12
+
+    const monthlyData = combinedData.filter((item: any) => {
+      const iso = item._isoDate || normalizeToISO(item.date, { preferDMY: true })
+      if (!iso) return false
+      const d = new Date(iso)
+      return d.getFullYear() === y && (d.getMonth() + 1) === m
     })
 
     if (monthlyData.length === 0) {
@@ -968,7 +1057,8 @@ export default function ReportsTab() {
                 id="report-month"
                 type="month"
                 className="bg-black text-white border-gray-600"
-                defaultValue={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`}
+                value={reportMonth}
+                onChange={(e) => setReportMonth(e.target.value)}
               />
             </div>
             <Button
@@ -988,15 +1078,14 @@ export default function ReportsTab() {
                   <div className="bg-green-300/20 border border-green-600/30 text-green-700 rounded-md p-4">
                     Monthly Report for{" "}
                     {(() => {
-                      const val = document.getElementById("report-month")?.value || "";
-                      const [year, month] = val.split("-");
+                      const [year, month] = reportMonth.split("-")
                       if (year && month) {
                         return new Date(Number(year), Number(month) - 1, 1).toLocaleDateString(
                           "en-US",
                           { month: "long", year: "numeric" }
-                        );
+                        )
                       }
-                      return "";
+                      return ""
                     })()}
                   </div>
 
