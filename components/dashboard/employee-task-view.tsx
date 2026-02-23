@@ -18,7 +18,7 @@ const DEPARTMENT_OPTIONS = [
   { value: "talent", label: "Talent" },
 ]
 
-type Department = "hr" | "finance" | "it" | "sales" | "talent"
+type Department = "hr" | "finance" | "engineering" | "operations" | "it" | "sales" | "talent"
 
 interface EmployeeTaskViewProps {
   currentUser: string // The logged-in employee's name
@@ -88,26 +88,37 @@ export default function EmployeeTaskView({ currentUser }: EmployeeTaskViewProps)
   const fetchTasks = async () => {
     setLoading(true)
     setError(null)
+
+    const { data: auth } = await supabase.auth.getUser()
+    const email = auth?.user?.email
+
+    if (!email) {
+      setError("Not logged in.")
+      setLoading(false)
+      return
+    }
+
     const { data, error } = await supabase
       .from("task_overviews")
       .select("*")
-      .eq("owner", currentUser) // Only fetch tasks for current user
+      .eq("owner", email) // ✅ match DB owner as email
       .order("created_at", { ascending: false })
 
-    if (error) {
-      console.error("Error fetching tasks:", error.message)
-      setError("Failed to load tasks. Please try again.")
-    } else {
-      const formattedTasks = data.map((task) => ({
-        ...task,
-        start_date: task.start_date ? new Date(task.start_date).toISOString().split("T")[0] : "",
-        estimated_completion_date: task.estimated_completion_date
-          ? new Date(task.estimated_completion_date).toISOString().split("T")[0]
-          : "",
-        actual_completion_date: task.actual_completion_date
-          ? new Date(task.actual_completion_date).toISOString().split("T")[0]
-          : "",
-      }))
+
+      if (error) {
+        console.error("Error fetching tasks:", error.message)
+        setError("Failed to load tasks. Please try again.")
+      } else {
+        const formattedTasks = data.map((task) => ({
+          ...task,
+          start_date: task.start_date ? new Date(task.start_date).toISOString().split("T")[0] : "",
+          estimated_completion_date: task.estimated_completion_date
+            ? new Date(task.estimated_completion_date).toISOString().split("T")[0]
+            : "",
+          actual_completion_date: task.actual_completion_date
+            ? new Date(task.actual_completion_date).toISOString().split("T")[0]
+            : "",
+        }))
       setTasks(formattedTasks as Task[])
     }
     setLoading(false)
