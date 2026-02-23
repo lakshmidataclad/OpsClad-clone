@@ -551,10 +551,11 @@ export default function TaskOverviewTab() {
             <p className="text-gray-500 text-lg">Loading tasks...</p>
           </div>
         ) : (
-          <div className="bg-white rounded-lg overflow-hidden border border-gray-200">
-            <div className="overflow-x-auto">
+          <div className="bg-white rounded-lg overflow-hidden border border-gray-200 max-h-[650px] overflow-y-auto">
+            {/* scroll container */}
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto pr-2">              
               <table className="w-full table-fixed">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
                     <th className="px-4 py-3 text-left text-gray-700 font-semibold w-[100px]">Task ID</th>
                     <th className="px-4 py-3 text-left text-gray-700 font-semibold w-[250px]">Description</th>
@@ -567,6 +568,7 @@ export default function TaskOverviewTab() {
                     <th className="px-4 py-3 text-left text-gray-700 font-semibold w-[120px]">Actions</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {tasks.map((task) => (
                     <tr key={task.id} className="border-t border-gray-200 hover:bg-gray-50">

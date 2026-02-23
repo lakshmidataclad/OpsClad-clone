@@ -51,6 +51,9 @@ export default function ExtractionTab() {
   const extractionStartTimeRef = useRef<number | null>(null)
 
   useEffect(() => {
+    setExtractedData([])
+    setCurrentExtractionId(null)
+
     const userStr = sessionStorage.getItem("currentUser")
     if (userStr) {
       const user = JSON.parse(userStr)
@@ -83,7 +86,7 @@ export default function ExtractionTab() {
     }
 
     if (currentUser) {
-      checkExtractionStatus(currentUser.id)
+      checkExtractionStatus(currentUser.user_id)
     }
 
     pollingRef.current = setInterval(() => {
@@ -131,6 +134,8 @@ export default function ExtractionTab() {
       if (currentExtractionId) {
         queryParams.append('extractionId', currentExtractionId)
       }
+
+      if (isExtractingRef.current) queryParams.append("includeData", "1")
 
       const response = await fetch(`/api/extract-timesheet?${queryParams}`, {
         method: "GET",
@@ -210,7 +215,12 @@ export default function ExtractionTab() {
 
       console.log("✅ Processing complete, checking results...")
 
-      if (jsonResponse.data && Array.isArray(jsonResponse.data) && jsonResponse.data.length > 0) {
+      if (
+        isExtractingRef.current &&
+        jsonResponse.data &&
+        Array.isArray(jsonResponse.data) &&
+        jsonResponse.data.length > 0
+      ) {        
         console.log(`🎉 Success! Found ${jsonResponse.data.length} entries`)
 
         setExtractionStatus(prev => ({
